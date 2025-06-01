@@ -1,24 +1,31 @@
-import logo from './logo.svg';
-import './App.css';
+// src/App.js
+import React from 'react';
+import { Routes, Route } from 'react-router-dom';
+import Home from './Pages/Home';
+import ClubMain from './Pages/clubs/ClubMain';
+import DocuMain from './Pages/documents/DocuMain';
+import EduMain from './Pages/educations/EduMain';
+import ScheduleMain from './Pages/schedules/ScheduleMain';
+import TaskMain from './Pages/tasks/TaskMain';
+import UserMain from './Pages/users/UserMain';
+import Header from './Components/Header';
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+  <>
+  <Header/>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/club" element={<ClubMain />} />
+      <Route path="/document" element={<DocuMain />} />
+      <Route path="/education" element={<EduMain/>} />
+      <Route path="/schedule" element={<ScheduleMain />} />
+      <Route path='/task' element={<TaskMain/>}/>
+      <Route path="/user" element={<UserMain />} />
+
+
+    </Routes>
+  </>
   );
 }
 

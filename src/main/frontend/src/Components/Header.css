@@ -1,0 +1,41 @@
+/* MainPage.css */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #eee;
+  padding: 10px 20px;
+}
+
+.logo {
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.nav {
+  display: flex;
+  gap: 10px;
+}
+
+.nav-button {
+  padding: 8px 12px;
+  background-color: #ccc;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.user-menu {
+  display: flex;
+  gap: 10px;
+}
+
+.user-button {
+  padding: 6px 10px;
+  background-color: #ddd;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
