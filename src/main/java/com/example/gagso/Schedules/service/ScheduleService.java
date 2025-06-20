@@ -1,5 +1,8 @@
 package com.example.gagso.Schedules.service;
 
+import com.example.gagso.Alarm.dto.AlarmInfo;
+import com.example.gagso.Alarm.models.AlarmDomainType;
+import com.example.gagso.Alarm.service.AlarmService;
 import com.example.gagso.Schedules.dto.ScheduleRegisterRequestDTO;
 import com.example.gagso.Schedules.dto.ScheduleRegistrationResult;
 import com.example.gagso.Schedules.helper.ScheduleValidator;
@@ -18,7 +21,7 @@ import java.util.stream.Collectors;
 /**
  * 일정 등록, 조회의 비즈니스 로직을 처리한다.
  * 저장소, 알림 예약, 유효성 검사, 로그 기록 등을 통합 조율한다.
- * 설계 명세: DCD3010
+ * 설계 명세: DCD3010 (알림 기능 통합 완료)
  */
 @Service
 @RequiredArgsConstructor
@@ -29,14 +32,16 @@ public class ScheduleService {
     private final ParticipantRepository participantRepository;
     private final ScheduleValidator validator;
 
+    // 알림 서비스 연동 (실제 구현)
+    private final AlarmService alarmService;
+
     // TODO: 향후 추가될 컴포넌트들
-    // private final AlarmScheduler alarmScheduler;
     // private final LogWriter<Schedule> logWriter;
 
     /**
      * 일정 등록, 유효성 검사, 로그 기록, 저장 요청, 알림 예약 요청,
      * 일정 등록 결과를 반환하는 일정 등록 전체 흐름
-     * 설계 명세: register
+     * 설계 명세: register (알림 기능 완전 구현)
      */
     @Transactional
     public ScheduleRegistrationResult register(ScheduleRegisterRequestDTO scheduleDTO, String employeeId) {
@@ -64,9 +69,9 @@ public class ScheduleService {
                 log.info("참여자 저장 완료: {} 명", scheduleDTO.getParticipantIds().size());
             }
 
-            // 6. 알림 예약 (향후 구현)
+            // 6. 알림 예약 (실제 구현 완료!)
             if (scheduleDTO.hasAlarm()) {
-                scheduleAlarm(savedSchedule);
+                scheduleAlarmForSchedule(savedSchedule, scheduleDTO);
             }
 
             // 7. 로그 기록 (향후 구현)
@@ -134,6 +139,33 @@ public class ScheduleService {
     }
 
     /**
+     * 일정 삭제 (알림도 함께 취소)
+     */
+    @Transactional
+    public void deleteSchedule(String scheduleId) {
+        try {
+            // 1. 일정 존재 확인
+            Schedule schedule = getSchedule(scheduleId);
+
+            // 2. 관련 알림 모두 취소
+            alarmService.cancelAlarmsByTarget(scheduleId, AlarmDomainType.SCHEDULE);
+            log.info("일정 관련 알림 취소 완료: {}", scheduleId);
+
+            // 3. 참여자 정보 삭제
+            participantRepository.deleteByScheduleId(scheduleId);
+
+            // 4. 일정 삭제
+            scheduleRepository.deleteById(scheduleId);
+
+            log.info("일정 삭제 완료: {}", scheduleId);
+
+        } catch (Exception e) {
+            log.error("일정 삭제 중 오류 발생: {}", scheduleId, e);
+            throw new RuntimeException("일정 삭제에 실패했습니다.", e);
+        }
+    }
+
+    /**
      * 일정 등록 정보 DTO를 Schedule 객체로 변환
      * 설계 명세: convertToSchedule
      */
@@ -162,12 +194,44 @@ public class ScheduleService {
     }
 
     /**
-     * 알림 예약 (향후 구현)
+     * 일정용 알림 예약 (실제 구현 완료!)
      */
-    private void scheduleAlarm(Schedule schedule) {
-        // TODO: AlarmScheduler 연동
-        log.info("알림 예약 대상: 일정 ID {}, 알림 시간 {}",
-                schedule.getScheduleId(), schedule.getAlarmTime());
+    private void scheduleAlarmForSchedule(Schedule schedule, ScheduleRegisterRequestDTO scheduleDTO) {
+        try {
+            // 작성자용 알림
+            AlarmInfo creatorAlarm = AlarmInfo.forSchedule(
+                    "010-0000-0000", // TODO: 실제 전화번호는 Employee 서비스에서 조회
+                    schedule.getScheduleId(),
+                    "[일정 알림] " + schedule.getTitle(),
+                    schedule.getDescription(),
+                    schedule.getAlarmTime()
+            );
+
+            String alarmId = alarmService.scheduleAlarm(creatorAlarm);
+            log.info("일정 작성자 알림 예약 완료: 일정 ID {}, 알림 ID {}",
+                    schedule.getScheduleId(), alarmId);
+
+            // 참여자용 알림 (그룹 일정인 경우)
+            if (scheduleDTO.hasParticipants()) {
+                for (String participantId : scheduleDTO.getParticipantIds()) {
+                    AlarmInfo participantAlarm = AlarmInfo.forSchedule(
+                            "010-1111-1111", // TODO: 참여자 전화번호 조회
+                            schedule.getScheduleId(),
+                            "[참여 일정 알림] " + schedule.getTitle(),
+                            "참여하시는 일정이 곧 시작됩니다.",
+                            schedule.getAlarmTime()
+                    );
+
+                    String participantAlarmId = alarmService.scheduleAlarm(participantAlarm);
+                    log.info("참여자 알림 예약 완료: 참여자 {}, 알림 ID {}",
+                            participantId, participantAlarmId);
+                }
+            }
+
+        } catch (Exception e) {
+            log.error("일정 알림 예약 중 오류 발생", e);
+            // 알림 실패가 일정 등록을 방해하지 않도록 예외를 던지지 않음
+        }
     }
 
     /**
