@@ -12,6 +12,5 @@ public class GagsoApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(GagsoApplication.class, args);
 	}
-
 }
 
