@@ -1,8 +1,10 @@
+// src/main/java/com/example/gagso/Schedules/service/ScheduleService.java
 package com.example.gagso.Schedules.service;
 
 import com.example.gagso.Alarm.dto.AlarmInfo;
 import com.example.gagso.Alarm.models.AlarmDomainType;
 import com.example.gagso.Alarm.service.AlarmService;
+import com.example.gagso.Employee.repository.EmployeeRepository;
 import com.example.gagso.Schedules.dto.ScheduleRegisterRequestDTO;
 import com.example.gagso.Schedules.dto.ScheduleRegistrationResult;
 import com.example.gagso.Schedules.helper.ScheduleValidator;
@@ -15,6 +17,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -102,6 +106,116 @@ public class ScheduleService {
     }
 
     /**
+     * 월별 일정 조회 (성능 최적화용)
+     * 달력 화면에서 특정 월의 일정만 필요할 때 사용
+     */
+    @Transactional(readOnly = true)
+    public List<Schedule> getAccessibleSchedulesByMonth(String employeeId, int year, int month) {
+        try {
+            // 해당 월의 시작일과 종료일 계산
+            LocalDateTime startOfMonth = LocalDateTime.of(year, month, 1, 0, 0);
+            LocalDateTime endOfMonth = startOfMonth.plusMonths(1).minusSeconds(1);
+
+            log.info("월별 일정 조회: 사용자 {}, 기간 {} ~ {}", employeeId, startOfMonth, endOfMonth);
+
+            // 해당 월의 접근 가능한 일정만 조회
+            List<Schedule> monthlySchedules = scheduleRepository
+                    .findAccessibleSchedulesByEmployeeIdAndDateRange(employeeId, startOfMonth, endOfMonth);
+
+            log.info("월별 일정 조회 완료: {} 건", monthlySchedules.size());
+            return monthlySchedules;
+
+        } catch (Exception e) {
+            log.error("월별 일정 조회 중 오류 발생", e);
+            return List.of();
+        }
+    }
+
+    /**
+     * 특정 날짜의 일정 조회 (달력 날짜 클릭 시 사용)
+     */
+    @Transactional(readOnly = true)
+    public List<Schedule> getAccessibleSchedulesByDate(String employeeId, LocalDate targetDate) {
+        try {
+            LocalDateTime startOfDay = targetDate.atStartOfDay();
+            LocalDateTime endOfDay = targetDate.atTime(23, 59, 59);
+
+            log.info("일별 일정 조회: 사용자 {}, 날짜 {}", employeeId, targetDate);
+
+            List<Schedule> dailySchedules = scheduleRepository
+                    .findAccessibleSchedulesByEmployeeIdAndDateRange(employeeId, startOfDay, endOfDay);
+
+            log.info("일별 일정 조회 완료: {} 건", dailySchedules.size());
+            return dailySchedules;
+
+        } catch (Exception e) {
+            log.error("일별 일정 조회 중 오류 발생", e);
+            return List.of();
+        }
+    }
+
+    /**
+     * 공개범위별 접근 권한 세부 확인 메서드
+     * 더 정확한 권한 검사가 필요할 때 사용
+     */
+    public boolean hasAccessToSchedule(String employeeId, String scheduleId) {
+        try {
+            Schedule schedule = scheduleRepository.findByScheduleId(scheduleId)
+                    .orElse(null);
+
+            if (schedule == null) {
+                return false;
+            }
+
+            return switch (schedule.getVisibility()) {
+                case PUBLIC -> true; // 모든 사용자 접근 가능
+
+                case GROUP -> {
+                    // 같은 부서이거나 참여자인 경우
+                    boolean isSameDepartment = checkSameDepartment(employeeId, schedule.getEmployeeId());
+                    boolean isParticipant = isParticipantInSchedule(employeeId, scheduleId);
+                    yield isSameDepartment || isParticipant;
+                }
+
+                case PRIVATE -> {
+                    // 작성자이거나 참여자인 경우만
+                    boolean isCreator = schedule.getEmployeeId().equals(employeeId);
+                    boolean isParticipant = isParticipantInSchedule(employeeId, scheduleId);
+                    yield isCreator || isParticipant;
+                }
+            };
+
+        } catch (Exception e) {
+            log.error("일정 접근 권한 확인 중 오류 발생", e);
+            return false;
+        }
+    }
+
+    /**
+     * 일정 통계 정보 조회 (대시보드용)
+     */
+    @Transactional(readOnly = true)
+    public ScheduleStatistics getScheduleStatistics(String employeeId) {
+        try {
+            List<Schedule> accessibleSchedules = getAccessibleSchedules(employeeId);
+
+            long totalCount = accessibleSchedules.size();
+            long todayCount = accessibleSchedules.stream()
+                    .filter(schedule -> isToday(schedule.getStartDateTime()))
+                    .count();
+            long upcomingCount = accessibleSchedules.stream()
+                    .filter(schedule -> isUpcoming(schedule.getStartDateTime()))
+                    .count();
+
+            return new ScheduleStatistics(totalCount, todayCount, upcomingCount);
+
+        } catch (Exception e) {
+            log.error("일정 통계 조회 중 오류 발생", e);
+            return new ScheduleStatistics(0, 0, 0);
+        }
+    }
+
+    /**
      * 특정 일정 상세 조회
      */
     @Transactional(readOnly = true)
@@ -155,19 +269,19 @@ public class ScheduleService {
             participantRepository.deleteByScheduleId(scheduleId);
 
             // 4. 일정 삭제
-            scheduleRepository.deleteById(scheduleId);
-
+            scheduleRepository.delete(schedule);
             log.info("일정 삭제 완료: {}", scheduleId);
 
         } catch (Exception e) {
-            log.error("일정 삭제 중 오류 발생: {}", scheduleId, e);
-            throw new RuntimeException("일정 삭제에 실패했습니다.", e);
+            log.error("일정 삭제 중 오류 발생", e);
+            throw new RuntimeException("일정 삭제 중 오류가 발생했습니다.");
         }
     }
 
+    // ==================== Private 헬퍼 메서드들 ====================
+
     /**
-     * 일정 등록 정보 DTO를 Schedule 객체로 변환
-     * 설계 명세: convertToSchedule
+     * DTO를 Schedule 엔티티로 변환
      */
     private Schedule convertToSchedule(ScheduleRegisterRequestDTO scheduleDTO) {
         return Schedule.builder()
@@ -176,9 +290,10 @@ public class ScheduleService {
                 .startDateTime(scheduleDTO.getStartDateTime())
                 .endDateTime(scheduleDTO.getEndDateTime())
                 .visibility(scheduleDTO.getVisibility())
-                .alarmEnabled(scheduleDTO.getAlarmEnabled())
+                .alarmEnabled(scheduleDTO.hasAlarm())
                 .alarmTime(scheduleDTO.getAlarmTime())
                 .employeeId(scheduleDTO.getEmployeeId())
+                .createdAt(LocalDateTime.now())
                 .build();
     }
 
@@ -187,40 +302,44 @@ public class ScheduleService {
      */
     private void saveParticipants(String scheduleId, List<String> participantIds) {
         List<Participant> participants = participantIds.stream()
-                .map(employeeId -> Participant.of(scheduleId, employeeId))
+                .map(employeeId -> Participant.builder()
+                        .scheduleId(scheduleId)
+                        .employeeId(employeeId)
+                        .build())
                 .collect(Collectors.toList());
 
         participantRepository.saveAll(participants);
     }
 
     /**
-     * 일정용 알림 예약 (실제 구현 완료!)
+     * 일정 알림 예약
      */
     private void scheduleAlarmForSchedule(Schedule schedule, ScheduleRegisterRequestDTO scheduleDTO) {
         try {
-            // 작성자용 알림
-            AlarmInfo creatorAlarm = AlarmInfo.forSchedule(
-                    "010-0000-0000", // TODO: 실제 전화번호는 Employee 서비스에서 조회
-                    schedule.getScheduleId(),
-                    "[일정 알림] " + schedule.getTitle(),
-                    schedule.getDescription(),
-                    schedule.getAlarmTime()
-            );
+            // 작성자 알림
+            AlarmInfo creatorAlarm = AlarmInfo.builder()
+                    .targetId(schedule.getScheduleId())
+                    .domainType(AlarmDomainType.SCHEDULE)
+                    .title("일정 알림: " + schedule.getTitle())
+                    .message(schedule.getDescription())
+                    .recipientId(schedule.getEmployeeId())
+                    .scheduledTime(schedule.getAlarmTime())
+                    .build();
 
-            String alarmId = alarmService.scheduleAlarm(creatorAlarm);
-            log.info("일정 작성자 알림 예약 완료: 일정 ID {}, 알림 ID {}",
-                    schedule.getScheduleId(), alarmId);
+            String creatorAlarmId = alarmService.scheduleAlarm(creatorAlarm);
+            log.info("작성자 알림 예약 완료: 알림 ID {}", creatorAlarmId);
 
-            // 참여자용 알림 (그룹 일정인 경우)
+            // 참여자들에게도 알림 예약
             if (scheduleDTO.hasParticipants()) {
                 for (String participantId : scheduleDTO.getParticipantIds()) {
-                    AlarmInfo participantAlarm = AlarmInfo.forSchedule(
-                            "010-1111-1111", // TODO: 참여자 전화번호 조회
-                            schedule.getScheduleId(),
-                            "[참여 일정 알림] " + schedule.getTitle(),
-                            "참여하시는 일정이 곧 시작됩니다.",
-                            schedule.getAlarmTime()
-                    );
+                    AlarmInfo participantAlarm = AlarmInfo.builder()
+                            .targetId(schedule.getScheduleId())
+                            .domainType(AlarmDomainType.SCHEDULE)
+                            .title("참여 일정 알림: " + schedule.getTitle())
+                            .message(schedule.getDescription())
+                            .recipientId(participantId)
+                            .scheduledTime(schedule.getAlarmTime())
+                            .build();
 
                     String participantAlarmId = alarmService.scheduleAlarm(participantAlarm);
                     log.info("참여자 알림 예약 완료: 참여자 {}, 알림 ID {}",
@@ -235,10 +354,68 @@ public class ScheduleService {
     }
 
     /**
+     * 같은 부서 확인 (GROUP 공개범위 처리용)
+     */
+    private boolean checkSameDepartment(String employeeId1, String employeeId2) {
+        try {
+            // 같은 직원이면 true
+            if (employeeId1.equals(employeeId2)) {
+                return true;
+            }
+
+            // 데이터베이스에서 같은 부서 여부 확인
+            boolean isSameDept = employeeRepository.isSameDepartment(employeeId1, employeeId2);
+
+            log.debug("부서 확인 결과: {} vs {} = {}", employeeId1, employeeId2, isSameDept);
+            return isSameDept;
+
+        } catch (Exception e) {
+            log.error("부서 확인 중 오류 발생: {} vs {}", employeeId1, employeeId2, e);
+            // 오류 발생 시 안전하게 false 반환
+            return false;
+        }
+    }
+
+    /**
+     * 일정 참여자 확인
+     */
+    private boolean isParticipantInSchedule(String employeeId, String scheduleId) {
+        List<String> participants = participantRepository.findParticipantListByScheduleId(scheduleId);
+        return participants.contains(employeeId);
+    }
+
+    private boolean isToday(LocalDateTime dateTime) {
+        return dateTime.toLocalDate().equals(LocalDate.now());
+    }
+
+    private boolean isUpcoming(LocalDateTime dateTime) {
+        return dateTime.isAfter(LocalDateTime.now()) &&
+                dateTime.toLocalDate().isBefore(LocalDate.now().plusDays(7));
+    }
+
+    /**
      * 로그 기록 (향후 구현)
      */
     private void writeLog(String employeeId, Schedule schedule) {
         // TODO: LogWriter 연동
         log.info("일정 등록 로그: 작성자 {}, 일정 ID {}", employeeId, schedule.getScheduleId());
+    }
+
+    // 통계 정보를 담는 간단한 DTO 클래스
+    public static class ScheduleStatistics {
+        private final long totalCount;
+        private final long todayCount;
+        private final long upcomingCount;
+
+        public ScheduleStatistics(long totalCount, long todayCount, long upcomingCount) {
+            this.totalCount = totalCount;
+            this.todayCount = todayCount;
+            this.upcomingCount = upcomingCount;
+        }
+
+        // getters
+        public long getTotalCount() { return totalCount; }
+        public long getTodayCount() { return todayCount; }
+        public long getUpcomingCount() { return upcomingCount; }
     }
 }

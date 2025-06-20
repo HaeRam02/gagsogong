@@ -1,3 +1,4 @@
+// src/main/java/com/example/gagso/Schedules/controller/ScheduleController.java
 package com.example.gagso.Schedules.controller;
 
 import com.example.gagso.Schedules.dto.ScheduleRegisterRequestDTO;
@@ -6,9 +7,12 @@ import com.example.gagso.Schedules.models.Schedule;
 import com.example.gagso.Schedules.service.ScheduleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -82,6 +86,163 @@ public class ScheduleController {
 
         } catch (Exception e) {
             log.error("전체 일정 조회 중 오류 발생", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 월별 일정 조회 (달력 화면용)
+     */
+    @GetMapping("/monthly")
+    public ResponseEntity<List<Schedule>> getMonthlySchedules(
+            @RequestParam("year") int year,
+            @RequestParam("month") int month,
+            @RequestHeader(value = "X-Employee-Id", required = false) String employeeId) {
+
+        // TODO: 실제 환경에서는 JWT 토큰이나 세션에서 employeeId 추출
+        if (employeeId == null) {
+            employeeId = "TEMP_USER_001";
+        }
+
+        log.info("월별 일정 조회 요청: 사용자 {}, 년월 {}-{}", employeeId, year, month);
+
+        try {
+            List<Schedule> schedules = scheduleService.getAccessibleSchedulesByMonth(employeeId, year, month);
+            log.info("월별 일정 조회 완료: {} 건", schedules.size());
+            return ResponseEntity.ok(schedules);
+
+        } catch (Exception e) {
+            log.error("월별 일정 조회 중 오류 발생", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 일별 일정 조회
+     */
+    @GetMapping("/daily")
+    public ResponseEntity<List<Schedule>> getDailySchedules(
+            @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @RequestHeader(value = "X-Employee-Id", required = false) String employeeId) {
+
+        if (employeeId == null) {
+            employeeId = "TEMP_USER_001";
+        }
+
+        log.info("일별 일정 조회 요청: 사용자 {}, 날짜 {}", employeeId, date);
+
+        try {
+            List<Schedule> schedules = scheduleService.getAccessibleSchedulesByDate(employeeId, date);
+            log.info("일별 일정 조회 완료: {} 건", schedules.size());
+            return ResponseEntity.ok(schedules);
+
+        } catch (Exception e) {
+            log.error("일별 일정 조회 중 오류 발생", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 일정 통계 조회 (대시보드용)
+     */
+    @GetMapping("/statistics")
+    public ResponseEntity<ScheduleService.ScheduleStatistics> getScheduleStatistics(
+            @RequestHeader(value = "X-Employee-Id", required = false) String employeeId) {
+
+        if (employeeId == null) {
+            employeeId = "TEMP_USER_001";
+        }
+
+        log.info("일정 통계 조회 요청: 사용자 {}", employeeId);
+
+        try {
+            ScheduleService.ScheduleStatistics statistics = scheduleService.getScheduleStatistics(employeeId);
+            log.info("일정 통계 조회 완료: 전체 {}, 오늘 {}, 예정 {}",
+                    statistics.getTotalCount(), statistics.getTodayCount(), statistics.getUpcomingCount());
+            return ResponseEntity.ok(statistics);
+
+        } catch (Exception e) {
+            log.error("일정 통계 조회 중 오류 발생", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 특정 일정 접근 권한 확인
+     */
+    @GetMapping("/{scheduleId}/access")
+    public ResponseEntity<Boolean> checkScheduleAccess(
+            @PathVariable String scheduleId,
+            @RequestHeader(value = "X-Employee-Id", required = false) String employeeId) {
+
+        if (employeeId == null) {
+            employeeId = "TEMP_USER_001";
+        }
+
+        log.info("일정 접근 권한 확인 요청: 사용자 {}, 일정 ID {}", employeeId, scheduleId);
+
+        try {
+            boolean hasAccess = scheduleService.hasAccessToSchedule(employeeId, scheduleId);
+            log.info("일정 접근 권한 확인 완료: {}", hasAccess);
+            return ResponseEntity.ok(hasAccess);
+
+        } catch (Exception e) {
+            log.error("일정 접근 권한 확인 중 오류 발생", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 오늘의 일정 조회 (빠른 조회용)
+     */
+    @GetMapping("/today")
+    public ResponseEntity<List<Schedule>> getTodaySchedules(
+            @RequestHeader(value = "X-Employee-Id", required = false) String employeeId) {
+
+        if (employeeId == null) {
+            employeeId = "TEMP_USER_001";
+        }
+
+        log.info("오늘 일정 조회 요청: 사용자 {}", employeeId);
+
+        try {
+            LocalDate today = LocalDate.now();
+            List<Schedule> schedules = scheduleService.getAccessibleSchedulesByDate(employeeId, today);
+            log.info("오늘 일정 조회 완료: {} 건", schedules.size());
+            return ResponseEntity.ok(schedules);
+
+        } catch (Exception e) {
+            log.error("오늘 일정 조회 중 오류 발생", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 다가오는 일정 조회 (7일 이내)
+     */
+    @GetMapping("/upcoming")
+    public ResponseEntity<List<Schedule>> getUpcomingSchedules(
+            @RequestHeader(value = "X-Employee-Id", required = false) String employeeId) {
+
+        if (employeeId == null) {
+            employeeId = "TEMP_USER_001";
+        }
+
+        log.info("다가오는 일정 조회 요청: 사용자 {}", employeeId);
+
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime weekLater = now.plusDays(7);
+
+            // Repository에서 직접 조회 (더 효율적)
+            List<Schedule> schedules = scheduleService.getScheduleRepository()
+                    .findUpcomingSchedulesByEmployeeId(employeeId, now, weekLater);
+
+            log.info("다가오는 일정 조회 완료: {} 건", schedules.size());
+            return ResponseEntity.ok(schedules);
+
+        } catch (Exception e) {
+            log.error("다가오는 일정 조회 중 오류 발생", e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -164,43 +325,23 @@ public class ScheduleController {
     }
 
     /**
-     * 직원 정보 검색 (참여자 선택용)
-     * 설계 명세: searchEmployeeInfoByKeyword
+     * 일정 삭제
      */
-    @GetMapping("/employees/search")
-    public ResponseEntity<?> searchEmployees(@RequestParam("keyword") String keyword) {
-        log.info("직원 검색 요청: 키워드 '{}'", keyword);
+    @DeleteMapping("/{scheduleId}")
+    public ResponseEntity<Void> deleteSchedule(@PathVariable String scheduleId) {
+        log.info("일정 삭제 요청: 일정 ID {}", scheduleId);
 
         try {
-            // TODO: EmployeeInfoProvider 연동
-            // List<EmployeeInfoDTO> employees = employeeInfoProvider.searchByKeyword(keyword);
+            scheduleService.deleteSchedule(scheduleId);
+            log.info("일정 삭제 완료: {}", scheduleId);
+            return ResponseEntity.noContent().build();
 
-            // 임시 응답
-            return ResponseEntity.ok("직원 검색 기능은 Employee 서브시스템 연동 후 구현 예정");
-
-        } catch (Exception e) {
-            log.error("직원 검색 중 오류 발생", e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * 일정 등록 화면 초기화 (전체 직원 목록 제공)
-     * 설계 명세: showRegisterView
-     */
-    @GetMapping("/register/init")
-    public ResponseEntity<?> initRegisterView() {
-        log.info("일정 등록 화면 초기화 요청");
-
-        try {
-            // TODO: EmployeeInfoProvider 연동
-            // List<EmployeeInfoDTO> allEmployees = employeeInfoProvider.getAllEmployees();
-
-            // 임시 응답
-            return ResponseEntity.ok("일정 등록 화면 초기화 - Employee 서브시스템 연동 후 구현 예정");
+        } catch (IllegalArgumentException e) {
+            log.warn("삭제할 일정을 찾을 수 없음: {}", scheduleId);
+            return ResponseEntity.notFound().build();
 
         } catch (Exception e) {
-            log.error("일정 등록 화면 초기화 중 오류 발생", e);
+            log.error("일정 삭제 중 오류 발생", e);
             return ResponseEntity.internalServerError().build();
         }
     }

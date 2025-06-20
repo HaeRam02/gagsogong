@@ -20,6 +20,7 @@ public class AlarmInfo {
     private String targetId;
 
     private String title;
+    private String message;
 
     private String description;
 
