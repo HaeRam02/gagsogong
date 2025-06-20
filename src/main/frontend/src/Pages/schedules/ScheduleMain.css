@@ -1,0 +1,344 @@
+/* ScheduleMain.css */
+
+.schedule-list-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.schedule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid #e1e5e9;
+}
+
+.schedule-header h1 {
+  color: #2c3e50;
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.create-btn {
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 6px rgba(52, 152, 219, 0.3);
+}
+
+.create-btn:hover {
+  background: linear-gradient(135deg, #2980b9, #3498db);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(52, 152, 219, 0.4);
+}
+
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #7f8c8d;
+  font-size: 18px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: #7f8c8d;
+}
+
+.empty-state p {
+  font-size: 18px;
+  margin-bottom: 20px;
+}
+
+.create-btn-secondary {
+  background: #ecf0f1;
+  color: #2c3e50;
+  border: 2px solid #bdc3c7;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.create-btn-secondary:hover {
+  background: #d5dbdb;
+  border-color: #95a5a6;
+}
+
+.schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 20px;
+}
+
+.schedule-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #e1e5e9;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.schedule-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border-color: #3498db;
+}
+
+.schedule-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.schedule-title {
+  color: #2c3e50;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+  margin-right: 12px;
+}
+
+.visibility-badge {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.visibility-badge.public {
+  background: #e8f5e8;
+  color: #27ae60;
+}
+
+.visibility-badge.department {
+  background: #fff3cd;
+  color: #f39c12;
+}
+
+.visibility-badge.private {
+  background: #f8d7da;
+  color: #e74c3c;
+}
+
+.schedule-description {
+  color: #5d6d7e;
+  line-height: 1.5;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.schedule-info {
+  margin-bottom: 12px;
+}
+
+.schedule-time {
+  color: #34495e;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.schedule-participants {
+  color: #34495e;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+.alarm-indicator {
+  color: #f39c12;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* 일정 상세 뷰 스타일 */
+.schedule-detail-container {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.detail-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 30px;
+  gap: 16px;
+}
+
+.back-btn {
+  background: #ecf0f1;
+  color: #2c3e50;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.back-btn:hover {
+  background: #d5dbdb;
+}
+
+.detail-header h2 {
+  color: #2c3e50;
+  margin: 0;
+  font-size: 24px;
+}
+
+.schedule-detail {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  border: 1px solid #e1e5e9;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.detail-section {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.detail-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.detail-section h3 {
+  color: #2c3e50;
+  font-size: 28px;
+  margin: 0 0 12px 0;
+  font-weight: 600;
+}
+
+.detail-section h4 {
+  color: #34495e;
+  font-size: 18px;
+  margin: 0 0 12px 0;
+  font-weight: 500;
+}
+
+.detail-section p {
+  color: #5d6d7e;
+  line-height: 1.6;
+  margin: 0;
+  font-size: 16px;
+}
+
+.time-info p {
+  margin-bottom: 8px;
+}
+
+.participants-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.participant-tag {
+  background: #e8f4fd;
+  color: #2980b9;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* 일정 생성 뷰 스타일 */
+.schedule-create-container {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.create-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 30px;
+  gap: 16px;
+}
+
+.create-header h2 {
+  color: #2c3e50;
+  margin: 0;
+  font-size: 24px;
+}
+
+.create-placeholder {
+  background: white;
+  border-radius: 12px;
+  padding: 60px 32px;
+  border: 2px dashed #bdc3c7;
+  text-align: center;
+  color: #7f8c8d;
+}
+
+.create-placeholder p {
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .schedule-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .schedule-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  
+  .schedule-header h1 {
+    text-align: center;
+  }
+  
+  .schedule-card-header {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .schedule-title {
+    margin-right: 0;
+  }
+  
+  .participants-list {
+    flex-direction: column;
+  }
+  
+  .participant-tag {
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .schedule-list-container,
+  .schedule-detail-container,
+  .schedule-create-container {
+    padding: 16px;
+  }
+  
+  .schedule-card {
+    padding: 20px;
+  }
+  
+  .schedule-detail {
+    padding: 24px;
+  }
+}
