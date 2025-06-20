@@ -32,6 +32,9 @@ out/
 /dist/
 /nbdist/
 /.nb-gradle/
+git commit -m "Stop tracking application.properties"
 
 ### VS Code ###
 .vscode/
+
+src/main/resources/application.properties

@@ -9,7 +9,7 @@ function TaskCreateView() {
     // '로그인 되어 있다'고 가정한 가상의 사용자 정보
     const loggedInUser = {
         id: 'EMP_007',       // 로그인한 사용자의 ID
-        name: '이순신',      // 로그인한 사용자의 이름
+        name: '홍길동',      // 로그인한 사용자의 이름
         deptId: 'D101'       // 로그인한 사용자의 부서 ID
     };
 
@@ -92,7 +92,7 @@ function TaskCreateView() {
 
         try {
             const res = await axios.post("/api/tasks", uploadData);
-            alert("✅ " + res.data);
+            alert("✅ " + res.data); 
             nav('/task');
         } catch (err) {
             alert("❌ 등록 실패: " + (err.response?.data || "오류 발생"));
