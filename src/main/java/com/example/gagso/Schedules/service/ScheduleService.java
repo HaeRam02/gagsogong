@@ -4,7 +4,6 @@ package com.example.gagso.Schedules.service;
 import com.example.gagso.Alarm.dto.AlarmInfo;
 import com.example.gagso.Alarm.models.AlarmDomainType;
 import com.example.gagso.Alarm.service.AlarmService;
-import com.example.gagso.Employee.repository.EmployeeRepository;
 import com.example.gagso.Schedules.dto.ScheduleRegisterRequestDTO;
 import com.example.gagso.Schedules.dto.ScheduleRegistrationResult;
 import com.example.gagso.Schedules.helper.ScheduleValidator;
@@ -323,32 +322,30 @@ public class ScheduleService {
                     .title("일정 알림: " + schedule.getTitle())
                     .message(schedule.getDescription())
                     .recipientId(schedule.getEmployeeId())
-                    .scheduledTime(schedule.getAlarmTime())
+                    .noticeTime(scheduleDTO.getAlarmTime())
                     .build();
 
-            String creatorAlarmId = alarmService.scheduleAlarm(creatorAlarm);
-            log.info("작성자 알림 예약 완료: 알림 ID {}", creatorAlarmId);
+            alarmService.scheduleAlarm(creatorAlarm);
 
-            // 참여자들에게도 알림 예약
-            if (scheduleDTO.hasParticipants()) {
+            // 참여자 알림 (그룹 공개일 경우)
+            if (scheduleDTO.isGroupVisible() && scheduleDTO.hasParticipants()) {
                 for (String participantId : scheduleDTO.getParticipantIds()) {
                     AlarmInfo participantAlarm = AlarmInfo.builder()
                             .targetId(schedule.getScheduleId())
                             .domainType(AlarmDomainType.SCHEDULE)
-                            .title("참여 일정 알림: " + schedule.getTitle())
-                            .message(schedule.getDescription())
+                            .title("일정 알림: " + schedule.getTitle())
+                            .message("참여 일정: " + schedule.getDescription())
                             .recipientId(participantId)
-                            .scheduledTime(schedule.getAlarmTime())
+                            .noticeTime(scheduleDTO.getAlarmTime())
                             .build();
 
-                    String participantAlarmId = alarmService.scheduleAlarm(participantAlarm);
-                    log.info("참여자 알림 예약 완료: 참여자 {}, 알림 ID {}",
-                            participantId, participantAlarmId);
+                    alarmService.scheduleAlarm(participantAlarm);
                 }
             }
 
+            log.info("일정 알림 예약 완료: {}", schedule.getScheduleId());
         } catch (Exception e) {
-            log.error("일정 알림 예약 중 오류 발생", e);
+            log.error("알림 예약 실패", e);
             // 알림 실패가 일정 등록을 방해하지 않도록 예외를 던지지 않음
         }
     }
