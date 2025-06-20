@@ -1,0 +1,114 @@
+.container {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0;
+  font-family: sans-serif;
+}
+
+
+.wrapper {
+  width: 100%;
+  max-width: 900px;
+  min-width: 800px;
+  margin: 0 auto;
+}
+
+
+.title {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.form {
+  width: 100%;
+}
+
+.formRow {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+}
+
+.shortFormRow {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 20px;
+  width: 50%;
+}
+
+.formRowGroup {
+  display: flex;
+  gap: 24px;
+  width: 100%;
+}
+
+/* 테이블 스타일 */
+.table {
+  width: 100%;
+  min-width: 800px;
+  border-collapse: collapse;
+  margin-top: 20px;
+  font-size: 14px;
+  table-layout: fixed;
+}
+
+.table th,
+.table td {
+  border: 1px solid #333;
+  padding: 12px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 테이블 헤더 */
+.table th {
+  background-color: #f8f8f8;
+  font-weight: bold;
+}
+
+/* 라벨 공통 */
+.formRow label,
+.shortFormRow label {
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+/* 입력 필드 */
+input[type='text'],
+input[type='date'] {
+  padding: 6px;
+  font-size: 14px;
+  width: 100%;
+}
+
+/* 인라인 요소들 (라디오 등) */
+.inline {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+/* 라디오버튼 여백 */
+input[type='radio'] {
+  margin-right: 4px;
+}
+
+/* 등록/취소 버튼 정렬 */
+.submitRowRight {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 30px;
+}
+
+/* 버튼 공통 스타일 */
+.submitBtn {
+  padding: 8px 20px;
+  font-size: 14px;
+  background-color: #ddd;
+  border: 1px solid #ccc;
+  cursor: pointer;
+}
