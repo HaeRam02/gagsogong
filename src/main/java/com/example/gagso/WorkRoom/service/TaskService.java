@@ -9,7 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
+import com.example.gagso.Log.model.ActionType;
+import com.example.gagso.Log.service.LogWriter;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -23,6 +24,8 @@ public class TaskService {
     private final TaskValidator validator;
     private final TaskRepository taskRepository;
 
+    private final LogWriter<Task> taskLogWriter;
+
     @Transactional
     public String register(TaskDTO dto, MultipartFile file) {
         String validationMessage = validator.validate(dto);
@@ -33,7 +36,7 @@ public class TaskService {
         Task task = toEntity(dto);
 
         if (file != null && !file.isEmpty()) {
-            String uploadDir = "/path/to/your/uploads/";
+            String uploadDir = "C:/Users/wodnr/uploads/tasks/";
             String originalFileName = file.getOriginalFilename();
             String savedFileName = UUID.randomUUID().toString() + "_" + originalFileName;
             File dest = new File(uploadDir + savedFileName);
@@ -49,6 +52,8 @@ public class TaskService {
         }
 
         taskRepository.save(task);
+
+        taskLogWriter.save(dto.getManagerId(), ActionType.REGISTER, task);
 
         return "";
     }
@@ -69,7 +74,7 @@ public class TaskService {
 
     private Task toEntity(TaskDTO dto) {
         Task task = new Task();
-
+        task.setTaskId(UUID.randomUUID().toString());
         task.setTitle(dto.getTitle());
         task.setStartDate(dto.getStartDate());
         task.setEndDate(dto.getEndDate());
