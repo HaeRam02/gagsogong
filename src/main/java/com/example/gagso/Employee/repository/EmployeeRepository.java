@@ -1,5 +1,8 @@
 package com.example.gagso.Employee.repository;
 
+// 누락된 Employee 클래스 import 추가
+import com.example.gagso.Employee.models.Employee;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -69,34 +72,39 @@ public interface EmployeeRepository extends JpaRepository<Employee, String> {
     <S extends Employee> S save(S employee);
 
     /**
-     * 두 직원이 같은 부서인지 확인
+     * 직원 정보 삭제
      */
-    @Query("""
-        SELECT CASE WHEN COUNT(*) > 0 THEN true ELSE false END 
-        FROM Employee e1, Employee e2 
-        WHERE e1.employeeId = :employeeId1 
-          AND e2.employeeId = :employeeId2 
-          AND e1.deptId = e2.deptId
-          AND e1.deptId IS NOT NULL
-    """)
-    boolean isSameDepartment(@Param("employeeId1") String employeeId1,
-                             @Param("employeeId2") String employeeId2);
+    @Override
+    void deleteById(String employeeId);
 
     /**
-     * 키워드 통합 검색 (이름, 부서명, 사용자ID)
+     * 직원 존재 여부 확인
      */
-    @Query("""
-        SELECT e FROM Employee e 
-        WHERE (e.name LIKE %:keyword% 
-            OR e.deptName LIKE %:keyword% 
-            OR e.userId LIKE %:keyword%)
-        ORDER BY e.name
-    """)
+    @Override
+    boolean existsById(String employeeId);
+
+    /**
+     * 키워드로 직원 검색 (이름, 부서명, 전화번호에서 검색)
+     * 설계 명세: searchByKeyword(keyword: String) -> List<Employee>
+     */
+    @Query("SELECT e FROM Employee e WHERE " +
+            "e.name LIKE %:keyword% OR " +
+            "e.deptName LIKE %:keyword% OR " +
+            "e.phoneNum LIKE %:keyword% " +
+            "ORDER BY e.name")
     List<Employee> searchByKeyword(@Param("keyword") String keyword);
 
     /**
-     * 부서별 직원 수 조회
+     * 두 직원이 같은 부서인지 확인
      */
-    @Query("SELECT e.deptName, COUNT(e) FROM Employee e GROUP BY e.deptName, e.deptId")
+    @Query("SELECT CASE WHEN COUNT(e1) > 0 AND COUNT(e2) > 0 AND e1.deptId = e2.deptId THEN true ELSE false END " +
+            "FROM Employee e1, Employee e2 " +
+            "WHERE e1.employeeId = :employeeId1 AND e2.employeeId = :employeeId2")
+    boolean isSameDepartment(@Param("employeeId1") String employeeId1, @Param("employeeId2") String employeeId2);
+
+    /**
+     * 부서별 직원 수 통계
+     */
+    @Query("SELECT e.deptName, COUNT(e) FROM Employee e GROUP BY e.deptName ORDER BY e.deptName")
     List<Object[]> countEmployeesByDepartment();
 }

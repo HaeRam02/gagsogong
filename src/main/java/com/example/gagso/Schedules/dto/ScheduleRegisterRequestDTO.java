@@ -12,7 +12,8 @@ import java.util.List;
 
 /**
  * 사용자가 입력한 일정 등록 정보를 담는 데이터 전달 객체
- * 설계 명세: DCD3004
+ * 설계 명세: DCD3004 - DTO ScheduleRegisterRequestDTO
+ * 지속성: Transient
  */
 @Data
 @NoArgsConstructor
@@ -21,76 +22,122 @@ import java.util.List;
 public class ScheduleRegisterRequestDTO {
 
     /**
-     * 일정명 (필수항목, 최대 20자)
+     * 일정 작성자 ID (서버에서 설정)
+     */
+    private String employeeId;
+
+    /**
+     * 일정 제목
      */
     private String title;
 
     /**
-     * 일정 설명 (필수항목, 최대 200자)
+     * 일정 설명
      */
     private String description;
 
     /**
-     * 시작날짜 (필수항목)
+     * 일정 시작 일시
      */
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime startDateTime;
+    private LocalDateTime startDate;
 
     /**
-     * 종료날짜 (필수항목)
+     * 일정 종료 일시
      */
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime endDateTime;
+    private LocalDateTime endDate;
 
     /**
-     * 공개범위 (필수항목)
+     * 일정 공개 범위
      */
-    private Visibility visibility;
+    @Builder.Default
+    private Visibility visibility = Visibility.PRIVATE;
 
     /**
-     * 알림여부 (선택항목)
+     * 알람 설정 유무
+     * @Builder.Default를 사용하여 기본값 설정
      */
+    @Builder.Default
     private Boolean alarmEnabled = false;
 
     /**
-     * 알림시간 (알림여부가 true일 때 필수항목)
+     * 알람 시간
      */
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime alarmTime;
 
     /**
-     * 참여자 ID 목록 (선택항목)
+     * 참여자 ID 목록
      */
     private List<String> participantIds;
 
     /**
-     * 작성자 ID (시스템에서 자동 설정)
+     * 비즈니스 메서드: 참여자가 있는지 확인
      */
-    private String employeeId;
+    public boolean hasParticipants() {
+        return participantIds != null && !participantIds.isEmpty();
+    }
 
     /**
-     * 참여자 검색 키워드 (UI에서만 사용, 서버로 전송되지 않음)
-     */
-    private transient String searchKeyword;
-
-    /**
-     * 알림이 설정되어 있는지 확인
+     * 비즈니스 메서드: 알람이 설정되어 있는지 확인
      */
     public boolean hasAlarm() {
         return alarmEnabled != null && alarmEnabled && alarmTime != null;
     }
 
     /**
-     * 그룹 공개 일정인지 확인
+     * 비즈니스 메서드: 유효한 일정 시간인지 확인
      */
-    public boolean isGroupVisible() {
-        return Visibility.GROUP.equals(visibility);
+    public boolean isValidScheduleTime() {
+        return startDate != null && endDate != null && startDate.isBefore(endDate);
     }
 
     /**
-     * 참여자가 있는지 확인
+     * 비즈니스 메서드: 미래 일정인지 확인
      */
-    public boolean hasParticipants() {
-        return participantIds != null && !participantIds.isEmpty();
+    public boolean isFutureSchedule() {
+        return startDate != null && startDate.isAfter(LocalDateTime.now());
+    }
+
+    /**
+     * 비즈니스 메서드: 일정 기간 (분 단위)
+     */
+    public long getDurationMinutes() {
+        if (startDate == null || endDate == null) {
+            return 0;
+        }
+        return java.time.Duration.between(startDate, endDate).toMinutes();
+    }
+
+    /**
+     * 비즈니스 메서드: 알람 시간이 유효한지 확인
+     */
+    public boolean isValidAlarmTime() {
+        if (!hasAlarm()) {
+            return true; // 알람이 없으면 유효
+        }
+        return alarmTime != null &&
+                alarmTime.isAfter(LocalDateTime.now()) &&
+                alarmTime.isBefore(startDate);
+    }
+
+    /**
+     * 유효성 검사를 위한 헬퍼 메서드
+     */
+    public boolean isValid() {
+        return title != null && !title.trim().isEmpty() &&
+                isValidScheduleTime() &&
+                isFutureSchedule() &&
+                isValidAlarmTime();
+    }
+
+    /**
+     * 디버깅용 toString (중요 정보만)
+     */
+    @Override
+    public String toString() {
+        return String.format("ScheduleRegisterRequestDTO{title='%s', startDate=%s, endDate=%s, alarmEnabled=%s}",
+                title, startDate, endDate, alarmEnabled);
     }
 }

@@ -1,83 +1,116 @@
 package com.example.gagso.Schedules.models;
 
+import com.example.gagso.Schedules.models.Visibility;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.Setter;
 
 import java.time.LocalDateTime;
 
 /**
- * 일정 정보를 담는 엔티티 클래스
- * 설계 명세: DCD3001
+ * 일정 정보를 담고있는 엔티티 클래스
+ * 설계 명세: DCD3001 - Entity Schedule
+ * 지속성: Persistent
  */
 @Entity
-@Table(name = "Schedule")
-@Data
+@Table(name = "schedule")
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class Schedule {
 
+    /**
+     * 일정 고유 식별자 (Primary Key)
+     */
     @Id
-    @Column(name = "scheduleID", length = 36)
+    @Column(name = "schedule_id", length = 36, nullable = false)
     private String scheduleId;
 
-    @Column(name = "title", length = 20, nullable = false)
+    /**
+     * 일정 작성자 (직원 ID, 외래키)
+     */
+    @Column(name = "employee_id", length = 36, nullable = false)
+    private String employeeId;
+
+    /**
+     * 일정 제목
+     */
+    @Column(name = "title", length = 100, nullable = false)
     private String title;
 
-    @Column(name = "description", length = 200)
+    /**
+     * 일정 설명
+     */
+    @Column(name = "description", length = 500)
     private String description;
 
-    @Column(name = "startDateTime", nullable = false)
+    /**
+     * 일정 시작 일시
+     */
+    @Column(name = "start_date_time", nullable = false)
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime startDateTime;
 
-    @Column(name = "endDateTime", nullable = false)
+    /**
+     * 일정 종료 일시
+     */
+    @Column(name = "end_date_time", nullable = false)
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime endDateTime;
 
+    /**
+     * 일정 공개 범위
+     */
     @Enumerated(EnumType.STRING)
     @Column(name = "visibility", nullable = false)
     private Visibility visibility;
 
-    @Column(name = "alarmEnabled", nullable = false)
+    /**
+     * 알람 설정 유무
+     * @Builder.Default를 사용하여 기본값 설정
+     */
+    @Column(name = "alarm_enabled", nullable = false)
+    @Builder.Default
     private Boolean alarmEnabled = false;
 
-    @Column(name = "alarmTime")
+    /**
+     * 알람 시간
+     */
+    @Column(name = "alarm_time")
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime alarmTime;
 
-    @Column(name = "employeeId", length = 50, nullable = false)
-    private String employeeId;
-
-    @CreationTimestamp
-    @Column(name = "createdAt", updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updatedAt")
-    private LocalDateTime updatedAt;
-
     /**
-     * 일정 ID 생성 (UUID 기반)
+     * 생성 시간
      */
-    @PrePersist
-    public void generateId() {
-        if (this.scheduleId == null) {
-            this.scheduleId = java.util.UUID.randomUUID().toString();
-        }
-    }
+    @Column(name = "created_at", nullable = false)
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     /**
-     * 알림이 활성화된 일정인지 확인
+     * 수정 시간
+     */
+    @Column(name = "updated_at", nullable = false)
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    @Builder.Default
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
+    /**
+     * 비즈니스 메서드: 알람이 설정되어 있는지 확인
      */
     public boolean hasAlarm() {
         return alarmEnabled != null && alarmEnabled && alarmTime != null;
     }
 
     /**
-     * 현재 시간 기준으로 일정이 진행 중인지 확인
+     * 비즈니스 메서드: 일정이 현재 진행 중인지 확인
      */
     public boolean isOngoing() {
         LocalDateTime now = LocalDateTime.now();
@@ -85,9 +118,72 @@ public class Schedule {
     }
 
     /**
-     * 현재 시간 기준으로 일정이 완료되었는지 확인
+     * 비즈니스 메서드: 일정이 미래 일정인지 확인
      */
-    public boolean isCompleted() {
+    public boolean isUpcoming() {
+        return LocalDateTime.now().isBefore(startDateTime);
+    }
+
+    /**
+     * 비즈니스 메서드: 일정이 종료되었는지 확인
+     */
+    public boolean isFinished() {
         return LocalDateTime.now().isAfter(endDateTime);
+    }
+
+    /**
+     * 비즈니스 메서드: 일정 기간 (분 단위)
+     */
+    public long getDurationMinutes() {
+        return java.time.Duration.between(startDateTime, endDateTime).toMinutes();
+    }
+
+    /**
+     * JPA 콜백: 엔티티 저장 전 실행
+     */
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (updatedAt == null) {
+            updatedAt = LocalDateTime.now();
+        }
+        if (alarmEnabled == null) {
+            alarmEnabled = false;
+        }
+    }
+
+    /**
+     * JPA 콜백: 엔티티 수정 전 실행
+     */
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * toString 메서드 (디버깅용)
+     */
+    @Override
+    public String toString() {
+        return String.format("Schedule{id='%s', title='%s', startTime=%s, endTime=%s}",
+                scheduleId, title, startDateTime, endDateTime);
+    }
+
+    /**
+     * equals & hashCode (scheduleId 기준)
+     */
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+        Schedule schedule = (Schedule) obj;
+        return scheduleId != null && scheduleId.equals(schedule.scheduleId);
+    }
+
+    @Override
+    public int hashCode() {
+        return scheduleId != null ? scheduleId.hashCode() : 0;
     }
 }
