@@ -10,7 +10,7 @@ import TaskMain from './Pages/tasks/TaskMain';
 import UserMain from './Pages/users/UserMain';
 import Header from './Components/Header';
 import TaskCreateView from './Pages/tasks/TaskCreateView';
-
+import TaskSearchView from './Pages/tasks/TaskSearchView';
 function App() {
   return (
   <>
@@ -21,7 +21,10 @@ function App() {
       <Route path="/document" element={<DocuMain />} />
       <Route path="/education" element={<EduMain/>} />
       <Route path="/schedule" element={<ScheduleMain />} />
-      <Route path='/task' element={<TaskCreateView/>}/>
+      <Route path='/task' element={<TaskMain/>}/>
+      <Route path='/task/create' element={<TaskCreateView/>}/>
+      <Route path='/task/search' element={<TaskSearchView/>}/>
+
       <Route path="/user" element={<UserMain />} />
 
 
