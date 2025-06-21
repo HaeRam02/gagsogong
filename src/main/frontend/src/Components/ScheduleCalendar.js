@@ -41,18 +41,19 @@ const ScheduleCalendar = () => {
       const data = await scheduleApiService.getMonthlySchedules(year, month);
       console.log("🔄 [loadSchedules] API 응답 데이터:", data);
 
-      const normalized = data.map(schedule => ({
-        ...schedule,
-        startDateTime: schedule.startDate,
-        endDateTime:   schedule.endDate
-        }));
-        console.log("🔄 [loadSchedules] 통일 후 schedules:", normalized);
+      // const normalized = data.map(schedule => ({
+      //   ...schedule,
+      //   startDateTime: schedule.startDate,
+      //   endDateTime:   schedule.endDate
+      //   }));
+      //   console.log("🔄 [loadSchedules] 통일 후 schedules:", normalized);
 
-        const uniqueSchedules = normalized.filter((item, idx, arr) =>
-          arr.findIndex(x => x.scheduleId === item.scheduleId) === idx
-        );
+      //   const uniqueSchedules = normalized.filter((item, idx, arr) =>
+      //     arr.findIndex(x => x.scheduleId === item.scheduleId) === idx
+      //   );
 
-      setSchedules(uniqueSchedules);
+      // setSchedules(uniqueSchedules);
+      setSchedules(data);
       
     } catch (error) {
       console.error('일정 로드 실패:', error);
@@ -76,8 +77,8 @@ const ScheduleCalendar = () => {
   }
   return schedules.filter(schedule => {
     // 1) 원본 날짜/시간 문자열 꺼내기
-    const rawStart = schedule.startDateTime || schedule.startDate;
-    const rawEnd   = schedule.endDateTime   || schedule.endDate;
+    const rawStart = schedule.startDate;
+    const rawEnd   = schedule.endDate; 
     if (!rawStart || !rawEnd) return false;
 
     // 2) Date 객체 생성

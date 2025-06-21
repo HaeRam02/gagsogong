@@ -342,4 +342,34 @@
   .schedule-detail {
     padding: 24px;
   }
+
+  .error-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: #fee;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.error-detail {
+  color: #c0392b;
+  font-size: 14px;
+  margin: 10px 0;
+}
+
+.retry-btn {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  margin-top: 15px;
+  transition: background 0.3s;
+}
+
+.retry-btn:hover {
+  background: #c0392b;
+}
 }

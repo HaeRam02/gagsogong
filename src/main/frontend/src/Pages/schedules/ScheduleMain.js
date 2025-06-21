@@ -1,3 +1,4 @@
+// src/main/frontend/src/Pages/schedules/ScheduleMain.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RegisterScheduleView from './RegisterScheduleView';
@@ -59,12 +60,45 @@ const ScheduleMain = () => {
     setError(null);
   };
 
+  // 🔧 수정: 데이터 검증 및 로깅 강화
   const handleScheduleSubmit = async (scheduleData) => {
     try {
       setLoading(true);
       
+      // 🔧 수정: 전달받은 데이터 구조 검증 및 로깅
+      console.log('handleScheduleSubmit - 전달받은 원본 데이터:', scheduleData);
+      
+      // 데이터 유효성 사전 검사
+      if (!scheduleData) {
+        throw new Error('일정 데이터가 제공되지 않았습니다.');
+      }
+      
+      if (!scheduleData.title || !scheduleData.title.trim()) {
+        throw new Error('일정 제목은 필수입니다.');
+      }
+      
+      if (!scheduleData.startDate || !scheduleData.endDate) {
+        throw new Error('시작 날짜와 종료 날짜는 필수입니다.');
+      }
+
+      // 🔧 수정: 데이터 정규화 (필요시 기본값 설정)
+      const normalizedScheduleData = {
+        title: scheduleData.title,
+        description: scheduleData.description || '',
+        startDate: scheduleData.startDate,
+        endDate: scheduleData.endDate,
+        visibility: scheduleData.visibility || 'PUBLIC', // 기본값 명시적 설정
+        isAlarmEnabled: Boolean(scheduleData.isAlarmEnabled),
+        alarmTime: scheduleData.alarmTime || null,
+        selectedParticipants: scheduleData.selectedParticipants || []
+      };
+
+      console.log('handleScheduleSubmit - 정규화된 데이터:', normalizedScheduleData);
+      
       // API를 통해 일정 등록
-      const result = await scheduleApiService.registerSchedule(scheduleData);
+      const result = await scheduleApiService.registerSchedule(normalizedScheduleData);
+      
+      console.log('handleScheduleSubmit - API 응답:', result);
       
       if (result.success !== false) { // 등록 성공
         // 목록 새로고침
@@ -77,155 +111,151 @@ const ScheduleMain = () => {
       }
       
     } catch (error) {
-      console.error('일정 등록 실패:', error);
-      alert(`일정 등록 실패: ${error.message}`);
+      console.error('handleScheduleSubmit - 일정 등록 실패:', error);
+      
+      // 🔧 수정: 더 자세한 에러 메시지 제공
+      let errorMessage = '일정 등록 중 오류가 발생했습니다.';
+      
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      // 유효성 검사 에러의 경우 더 자세한 정보 제공
+      if (error.message && error.message.includes('visibility')) {
+        errorMessage += '\n공개 범위 설정에 문제가 있습니다. 다시 시도해주세요.';
+      }
+      
+      setError(errorMessage);
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  // 🔧 안전한 날짜 포맷팅
-  const formatDateTime = (dateTimeString) => {
+  // 🔧 기존 헬퍼 함수들은 그대로 유지
+  const formatDateTime = (dateTime) => {
+    if (!dateTime) return '-';
+    
     try {
-      if (!dateTimeString) return '날짜 없음';
-      const date = new Date(dateTimeString);
-      if (isNaN(date.getTime())) return '잘못된 날짜';
+      const date = new Date(dateTime);
+      if (isNaN(date.getTime())) return '-';
       
       return date.toLocaleString('ko-KR', {
         year: 'numeric',
-        month: '2-digit', 
+        month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        hour12: false
       });
     } catch (error) {
-      console.error('날짜 포맷팅 오류:', error);
-      return '날짜 오류';
+      console.error('날짜 포맷 실패:', error);
+      return '-';
     }
   };
 
   const getVisibilityText = (visibility) => {
     switch(visibility) {
       case 'PUBLIC': return '전체 공개';
-      case 'GROUP': return '그룹 공개';
-      case 'DEPARTMENT': return '부서 공개';
+      case 'GROUP': 
+      case 'DEPARTMENT': return '그룹 공개';
       case 'PRIVATE': return '비공개';
-      default: return visibility || '알 수 없음';
+      default: return '알 수 없음';
     }
   };
 
-  // 🔧 안전한 참여자 표시 함수
   const renderParticipants = (schedule) => {
-    try {
-      // participants가 배열인지 확인
-      if (Array.isArray(schedule.participants)) {
-        return schedule.participants.length > 0 
-          ? schedule.participants.join(', ')
-          : '참여자 없음';
-      }
-      
-      // participants가 객체나 다른 형태인 경우
-      if (schedule.participants && typeof schedule.participants === 'object') {
-        return '참여자 정보 있음';
-      }
-      
-      // participants가 없는 경우
-      return '참여자 정보 없음';
-    } catch (error) {
-      console.error('참여자 렌더링 오류:', error);
-      return '참여자 정보 오류';
+    if (!schedule.participants || schedule.participants.length === 0) {
+      return '참여자 없음';
     }
+    
+    if (schedule.participants.length === 1) {
+      return schedule.participants[0].name || schedule.participants[0].employeeId;
+    }
+    
+    return `${schedule.participants[0].name || schedule.participants[0].employeeId} 외 ${schedule.participants.length - 1}명`;
   };
 
-  // 🔧 안전한 상세 참여자 렌더링
   const renderDetailParticipants = (schedule) => {
-    try {
-      if (!schedule || !schedule.participants) {
-        return <span className="no-participants">참여자 정보 없음</span>;
-      }
-
-      if (Array.isArray(schedule.participants)) {
-        if (schedule.participants.length === 0) {
-          return <span className="no-participants">참여자 없음</span>;
-        }
-        
-        return schedule.participants.map((participant, index) => (
-          <span key={index} className="participant-tag">
-            {participant}
-          </span>
-        ));
-      }
-
-      return <span className="participant-info">참여자 정보 있음</span>;
-    } catch (error) {
-      console.error('상세 참여자 렌더링 오류:', error);
-      return <span className="participant-error">참여자 정보 오류</span>;
+    if (!schedule.participants || schedule.participants.length === 0) {
+      return <div className="no-participants">참여자가 없습니다.</div>;
     }
+    
+    return (
+      <div className="participants-grid">
+        {schedule.participants.map((participant, index) => (
+          <div key={participant.employeeId || index} className="participant-item">
+            <span className="participant-name">
+              {participant.name || participant.employeeId}
+            </span>
+            {participant.deptName && (
+              <span className="participant-dept">({participant.deptName})</span>
+            )}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   // 일정 목록 뷰
   const renderScheduleList = () => (
-    <div className="schedule-list-container">
+    <div className="schedule-main">
       <div className="schedule-header">
         <h1>일정 관리</h1>
-        <button 
-          className="create-btn"
-          onClick={handleCreateSchedule}
-        >
-          새 일정 등록
-        </button>
+        <div className="header-actions">
+          <button 
+            className="btn-primary" 
+            onClick={handleCreateSchedule}
+          >
+            + 새 일정
+          </button>
+        </div>
       </div>
+
+      {error && (
+        <div className="error-message">
+          {error}
+          <button onClick={() => setError(null)}>×</button>
+        </div>
+      )}
 
       {loading ? (
         <div className="loading">일정을 불러오는 중...</div>
-      ) : error ? (
-        <div className="error-state">
-          <p>오류가 발생했습니다: {error}</p>
-          <button 
-            className="retry-btn"
-            onClick={loadSchedules}
-          >
-            다시 시도
-          </button>
-        </div>
       ) : (
-        <div className="schedule-list">
-          <ScheduleCalendarView/>
+        <div className="schedule-content">
           {schedules.length === 0 ? (
             <div className="empty-state">
               <p>등록된 일정이 없습니다.</p>
               <button 
-                className="create-btn-secondary"
+                className="btn-primary" 
                 onClick={handleCreateSchedule}
               >
                 첫 번째 일정 만들기
               </button>
             </div>
           ) : (
-            <div className="schedule-grid">
+            <div className="schedule-list">
+              <ScheduleCalendarView />
               {schedules.map((schedule) => (
                 <div 
-                  key={schedule.scheduleId || schedule.id} 
-                  className="schedule-card"
+                  key={schedule.scheduleId} 
+                  className="schedule-item"
                   onClick={() => handleViewSchedule(schedule)}
                 >
-                  <div className="schedule-card-header">
-                    <h3 className="schedule-title">{schedule.title || '제목 없음'}</h3>
+                  <div className="schedule-item-header">
+                    <h3>{schedule.title || '제목 없음'}</h3>
                     <span className={`visibility-badge ${(schedule.visibility || 'private').toLowerCase()}`}>
                       {getVisibilityText(schedule.visibility)}
                     </span>
                   </div>
                   
-                  <p className="schedule-description">
-                    {schedule.description || '설명 없음'}
-                  </p>
-                  
-                  <div className="schedule-info">
+                  <div className="schedule-item-content">
+                    <p className="schedule-description">
+                      {schedule.description || '설명 없음'}
+                    </p>
+                    
                     <div className="schedule-time">
-                      <strong>시작:</strong> {formatDateTime(schedule.startDate)}
-                    </div>
-                    <div className="schedule-time">
-                      <strong>종료:</strong> {formatDateTime(schedule.endDate)}
+                      {formatDateTime(schedule.startDate)} ~ {formatDateTime(schedule.endDate)}
                     </div>
                   </div>
                   
@@ -314,7 +344,7 @@ const ScheduleMain = () => {
     />
   );
 
-   const rendereCalendarSchedule = () => (
+  const renderCalendarSchedule = () => (
     <ScheduleCalendarView />
   );
 

@@ -58,6 +58,26 @@ const formatDateTimeForBackend = (dateTimeString) => {
   return dateTimeString;
 };
 
+// 🔧 수정: 데이터 유효성 검사 및 기본값 설정 함수
+const validateAndNormalizeScheduleData = (scheduleData) => {
+  // 필수 필드 검사 및 기본값 설정
+  const normalized = {
+    title: scheduleData.title || '',
+    description: scheduleData.description || '',
+    startDate: scheduleData.startDate || '',
+    endDate: scheduleData.endDate || '',
+    visibility: scheduleData.visibility || 'PUBLIC', // 🔧 기본값 설정
+    isAlarmEnabled: Boolean(scheduleData.isAlarmEnabled),
+    alarmTime: scheduleData.alarmTime || null,
+    selectedParticipants: Array.isArray(scheduleData.selectedParticipants) 
+      ? scheduleData.selectedParticipants 
+      : []
+  };
+
+  console.log('데이터 정규화 결과:', normalized);
+  return normalized;
+};
+
 // 일정 관리 API 서비스
 const scheduleApiService = {
   
@@ -70,25 +90,38 @@ const scheduleApiService = {
     try {
       const currentUser = getCurrentUser();
       
-      // 공개범위 변환 처리
-      const originalVisibility = scheduleData.visibility;
-      const backendVisibility = originalVisibility === 'DEPARTMENT' ? 'GROUP' : originalVisibility.toUpperCase();
-      if (originalVisibility !== backendVisibility) {
-        console.log(`공개범위 변환: ${originalVisibility} → ${backendVisibility}`);
+      // 🔧 수정: 데이터 유효성 검사 및 정규화
+      const normalizedData = validateAndNormalizeScheduleData(scheduleData);
+      console.log('정규화된 일정 데이터:', normalizedData);
+
+      // 🔧 수정: null/undefined 방어 코드 추가
+      const originalVisibility = normalizedData.visibility;
+      let backendVisibility;
+      
+      if (!originalVisibility || typeof originalVisibility !== 'string') {
+        console.warn('유효하지 않은 visibility 값, 기본값 PUBLIC 사용:', originalVisibility);
+        backendVisibility = 'PUBLIC';
+      } else {
+        // 공개범위 변환 처리 (안전하게)
+        backendVisibility = originalVisibility === 'DEPARTMENT' ? 'GROUP' : originalVisibility.toUpperCase();
+        if (originalVisibility !== backendVisibility) {
+          console.log(`공개범위 변환: ${originalVisibility} → ${backendVisibility}`);
+        }
       }
 
       // 🔧 수정: 백엔드 DTO 필드명에 맞게 데이터 변환
       const requestDto = {
-        title: scheduleData.title,
-        description: scheduleData.description,
+        title: normalizedData.title,
+        description: normalizedData.description,
         // ✅ startDate, endDate로 변경
-        startDate: formatDateTimeForBackend(scheduleData.startDate),
-        endDate: formatDateTimeForBackend(scheduleData.endDate),
+        startDate: formatDateTimeForBackend(normalizedData.startDate),
+        endDate: formatDateTimeForBackend(normalizedData.endDate),
         visibility: backendVisibility,
-        alarmEnabled: scheduleData.isAlarmEnabled,
-        alarmTime: scheduleData.isAlarmEnabled ? 
-          formatDateTimeForBackend(scheduleData.alarmTime) : null,
-        participantIds: scheduleData.selectedParticipants?.map(p => p.employeeId) || []
+        alarmEnabled: normalizedData.isAlarmEnabled,
+        alarmTime: normalizedData.isAlarmEnabled 
+          ? formatDateTimeForBackend(normalizedData.alarmTime) 
+          : null,
+        participantIds: normalizedData.selectedParticipants?.map(p => p.employeeId) || []
       };
 
       console.log('일정 등록 요청 데이터:', requestDto);
@@ -125,35 +158,6 @@ const scheduleApiService = {
   },
 
   /**
-   * 일정 목록 조회 
-   * @param {string} employeeId - 직원 ID (선택사항)
-   * @returns {Promise} 일정 목록
-   */
-  // async getSchedules(employeeId = null) {
-  //   try {
-  //     const currentUser = getCurrentUser();
-  //     const targetEmployeeId = employeeId || currentUser.employeeId;
-
-  //     console.log('전체 일정 조회 요청:', targetEmployeeId);
-
-  //     // 실제 백엔드 API 호출
-  //     const response = await axios.get(API_BASE_URL, {
-  //       headers: {
-  //         'X-Employee-Id': currentUser.employeeId
-  //       }
-  //     });
-
-  //     console.log('일정 목록 조회 완료:', response.data);
-  //     return response.data;
-
-  //   } catch (error) {
-  //     console.error('일정 목록 조회 실패:', error);
-  //     const errorMessage = handleApiError(error, '일정 목록 조회 중 오류가 발생했습니다.');
-  //     throw new Error(errorMessage);
-  //   }
-  // },
-
-  /**
    * 월별 일정 조회 (달력 최적화용)
    * @param {number} year - 년도
    * @param {number} month - 월 (1-12)
@@ -188,116 +192,6 @@ const scheduleApiService = {
   },
 
   /**
-   * 일별 일정 조회
-   * @param {string} date - 날짜 (YYYY-MM-DD 형식)
-   * @param {string} employeeId - 직원 ID (선택사항)
-   * @returns {Promise} 해당 날짜의 일정 목록
-   */
-  async getDailySchedules(date, employeeId = null) {
-    try {
-      const currentUser = getCurrentUser();
-      const targetEmployeeId = employeeId || currentUser.employeeId;
-
-      console.log(`일별 일정 조회 요청: ${date}, 사용자: ${targetEmployeeId}`);
-
-      const response = await axios.get(`${API_BASE_URL}/daily`, {
-        params: {
-          date: date
-        },
-        headers: {
-          'X-Employee-Id': currentUser.employeeId
-        }
-      });
-
-      console.log('일별 일정 조회 완료:', response.data);
-      return response.data;
-
-    } catch (error) {
-      console.error('일별 일정 조회 실패:', error);
-      const errorMessage = handleApiError(error, '일별 일정 조회 중 오류가 발생했습니다.');
-      throw new Error(errorMessage);
-    }
-  },
-
-  /**
-   * 오늘의 일정 조회
-   * @returns {Promise} 오늘의 일정 목록
-   */
-  async getTodaySchedules() {
-    try {
-      const currentUser = getCurrentUser();
-
-      console.log(`오늘 일정 조회 요청: 사용자 ${currentUser.employeeId}`);
-
-      const response = await axios.get(`${API_BASE_URL}/today`, {
-        headers: {
-          'X-Employee-Id': currentUser.employeeId
-        }
-      });
-
-      console.log('오늘 일정 조회 완료:', response.data);
-      return response.data;
-
-    } catch (error) {
-      console.error('오늘 일정 조회 실패:', error);
-      const errorMessage = handleApiError(error, '오늘 일정 조회 중 오류가 발생했습니다.');
-      throw new Error(errorMessage);
-    }
-  },
-
-  /**
-   * 다가오는 일정 조회 (7일 이내)
-   * @returns {Promise} 다가오는 일정 목록
-   */
-  async getUpcomingSchedules() {
-    try {
-      const currentUser = getCurrentUser();
-
-      console.log(`다가오는 일정 조회 요청: 사용자 ${currentUser.employeeId}`);
-
-      const response = await axios.get(`${API_BASE_URL}/upcoming`, {
-        headers: {
-          'X-Employee-Id': currentUser.employeeId
-        }
-      });
-
-      console.log('다가오는 일정 조회 완료:', response.data);
-      return response.data;
-
-    } catch (error) {
-      console.error('다가오는 일정 조회 실패:', error);
-      const errorMessage = handleApiError(error, '다가오는 일정 조회 중 오류가 발생했습니다.');
-      throw new Error(errorMessage);
-    }
-  },
-
-  /**
-   * 일정 통계 조회
-   * @returns {Promise} 일정 통계 정보
-   */
-  async getScheduleStatistics() {
-    try {
-      const currentUser = getCurrentUser();
-
-      console.log(`일정 통계 조회 요청: 사용자 ${currentUser.employeeId}`);
-
-      const response = await axios.get(`${API_BASE_URL}/statistics`, {
-        headers: {
-          'X-Employee-Id': currentUser.employeeId
-        }
-      });
-
-      console.log('일정 통계 조회 완료:', response.data);
-      return response.data;
-
-    } catch (error) {
-      console.error('일정 통계 조회 실패:', error);
-      const errorMessage = handleApiError(error, '일정 통계 조회 중 오류가 발생했습니다.');
-      throw new Error(errorMessage);
-    }
-  },
-
-  /**
    * 달력 화면용 최적화된 일정 조회
    * 현재 월과 이전/다음 월의 일부 날짜까지 포함
    * @param {Date} currentDate - 현재 표시 중인 날짜
@@ -317,32 +211,6 @@ const scheduleApiService = {
       throw new Error(errorMessage);
     }
   },
-
-  // /**
-  //  * 개별 일정 조회
-  //  * @param {string} scheduleId - 일정 ID
-  //  * @returns {Promise} 일정 상세 정보
-  //  */
-  // async getScheduleById(scheduleId) {
-  //   try {
-  //     const currentUser = getCurrentUser();
-
-  //     console.log(`일정 상세 조회 요청: ${scheduleId}`);
-
-  //     const response = await axios.get(`${API_BASE_URL}/${scheduleId}`, {
-  //       headers: {
-  //         'X-Employee-Id': currentUser.employeeId
-  //       }
-  //     });
-
-  //     console.log('일정 상세 조회 완료:', response.data);
-  //     return response.data;
-
-  //   } catch (error) {
-  //     const errorMessage = handleApiError(error, '일정 조회 중 오류가 발생했습니다.');
-  //     throw new Error(errorMessage);
-  //   }
-  // },
 
   /**
    * 특정 일정 접근 권한 확인
@@ -429,9 +297,6 @@ const scheduleApiService = {
       return mockEmployees;
     }
   },
-
-
-
 
  /**
    * 일정 목록 조회

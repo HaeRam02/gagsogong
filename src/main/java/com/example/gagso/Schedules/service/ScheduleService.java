@@ -170,13 +170,16 @@ public class ScheduleService {
      * 🔧 새로 추가: 직원 ID로 직원 이름 조회
      */
     private String getEmployeeName(String employeeId) {
+        if (employeeId == null || employeeId.trim().isEmpty()) {
+            return "알 수 없는 사용자";
+        }
+
         try {
-            return employeeRepository.findByEmployeeId(employeeId)
-                    .map(Employee::getName)
-                    .orElse("알 수 없음");
+            Optional<Employee> employee = employeeRepository.findById(employeeId);
+            return employee.map(Employee::getName).orElse("사용자(" + employeeId + ")");
         } catch (Exception e) {
-            log.error("직원 이름 조회 실패: {}", employeeId, e);
-            return "알 수 없음";
+            log.warn("직원 이름 조회 실패: employeeId={}", employeeId, e);
+            return "사용자(" + employeeId + ")";
         }
     }
 
