@@ -1,5 +1,6 @@
 // src/main/frontend/src/Components/ScheduleCalendar.js
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Calendar, ChevronLeft, ChevronRight, Plus, Eye, Users, Lock } from 'lucide-react';
 import scheduleApiService from '../Services/scheduleApiService';
 import './ScheduleCalendar.css';
@@ -52,13 +53,25 @@ const ScheduleCalendar = () => {
   };
 
   // 특정 날짜의 일정들 가져오기
-  const getSchedulesForDate = (date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return schedules.filter(schedule => {
-      const scheduleDate = new Date(schedule.startDateTime).toISOString().split('T')[0];
-      return scheduleDate === dateStr;
-    });
-  };
+ function getSchedulesForDate(schedules, targetDate) {
+  console.log("📋 schedules:", schedules);
+  console.log("📋 typeof schedules:", typeof schedules);
+  if (!Array.isArray(schedules)) {
+    console.error("❌ schedules is not an array!");
+    return [];
+  }
+  return schedules.filter(schedule => {
+    const raw = schedule.startDateTime;
+    if (!raw) return false;                        // null/undefined 차단
+    const start = new Date(raw);
+    if (isNaN(start.getTime())) {                   // Invalid Date 차단
+      console.warn("Invalid date skipped:", raw);
+      return false;
+    }
+    return start.toISOString().slice(0, 10)
+         === targetDate.toISOString().slice(0, 10);
+  });
+}
 
   // 달력 날짜 배열 생성
   const generateCalendarDays = () => {
@@ -267,6 +280,7 @@ const ScheduleCalendar = () => {
           {/* 날짜 그리드 */}
           <div className="calendar-grid">
             {generateCalendarDays().map((date, index) => {
+
               const daySchedules = getSchedulesForDate(date);
 
               return (
