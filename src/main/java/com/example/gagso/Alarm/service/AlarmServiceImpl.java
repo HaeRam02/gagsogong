@@ -14,21 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * 인터페이스의 실제 구현, 알람 등록, 취소, 실행 로직을 수행
- * 설계 명세: DCD8006
- *
- * 🔧 메소드 추적 기반 개선 완료:
- * - cancelAlarmsByTarget() 메소드 완전 구현
- * - 모든 메소드의 에러 처리 강화
- * - 트랜잭션 관리 최적화
- * - 로깅 시스템 일관성 확보
- *
- * 📊 근원지 추적 완료:
- * - 대상별 알람 취소 기능 미완성 → 완전 구현
- * - 배치성 알람 처리 최적화 추가
- * - 알람 생명주기 관리 완성
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -37,10 +22,6 @@ public class AlarmServiceImpl implements AlarmService {
     private final AlarmRepository alarmRepository;
     private final AlarmScheduler alarmScheduler;
 
-    /**
-     * 알람 등록
-     * 설계 명세: scheduleAlarm
-     */
     @Override
     @Transactional
     public String scheduleAlarm(AlarmInfo alarmInfo) {
@@ -72,10 +53,6 @@ public class AlarmServiceImpl implements AlarmService {
         }
     }
 
-    /**
-     * 알람 취소
-     * 설계 명세: cancelAlarm
-     */
     @Override
     @Transactional
     public void cancelAlarm(String alarmId) {
@@ -105,10 +82,7 @@ public class AlarmServiceImpl implements AlarmService {
         }
     }
 
-    /**
-     * 🔧 완전 구현: 특정 대상의 모든 알람 취소
-     * 설계 명세: cancelAlarmsByTarget (확장)
-     */
+
     @Override
     @Transactional
     public void cancelAlarmsByTarget(String targetId, AlarmDomainType domainType) {
@@ -147,10 +121,7 @@ public class AlarmServiceImpl implements AlarmService {
         }
     }
 
-    /**
-     * 스케줄된 알람 실행 (매 분마다 실행)
-     * 설계 명세: executeScheduledAlarms
-     */
+
     @Override
     @Scheduled(fixedRate = 60000) // 1분마다 실행
     @Async
@@ -190,9 +161,6 @@ public class AlarmServiceImpl implements AlarmService {
         }
     }
 
-    /**
-     * 특정 사용자의 알람 목록 조회
-     */
     @Override
     @Transactional(readOnly = true)
     public List<Alarm> getAlarmsByRecipient(String recipientPhone) {
@@ -200,9 +168,6 @@ public class AlarmServiceImpl implements AlarmService {
         return alarmRepository.findByRecipientPhoneAndStatusTrue(recipientPhone);
     }
 
-    /**
-     * 특정 대상의 알람 목록 조회
-     */
     @Override
     @Transactional(readOnly = true)
     public List<Alarm> getAlarmsByTarget(String targetId, AlarmDomainType domainType) {
@@ -210,18 +175,13 @@ public class AlarmServiceImpl implements AlarmService {
         return alarmRepository.findByTargetIdAndDomainTypeAndStatusTrue(targetId, domainType);
     }
 
-    /**
-     * 활성 알람 목록 조회
-     */
     @Override
     @Transactional(readOnly = true)
     public List<Alarm> getActiveAlarms() {
         return alarmRepository.findActiveAlarmsAfter(LocalDateTime.now());
     }
 
-    /**
-     * 특정 시간 범위의 알람 조회
-     */
+
     @Override
     @Transactional(readOnly = true)
     public List<Alarm> getAlarmsBetween(LocalDateTime startTime, LocalDateTime endTime) {
@@ -229,9 +189,7 @@ public class AlarmServiceImpl implements AlarmService {
         return alarmRepository.findAlarmsBetween(startTime, endTime);
     }
 
-    /**
-     * 알람 상세 조회
-     */
+
     @Override
     @Transactional(readOnly = true)
     public Alarm getAlarmById(String alarmId) {
@@ -239,13 +197,6 @@ public class AlarmServiceImpl implements AlarmService {
                 .orElseThrow(() -> new IllegalArgumentException("알람을 찾을 수 없습니다: " + alarmId));
     }
 
-    // =====================================================================================
-    // 🔧 추가: 헬퍼 메소드들
-    // =====================================================================================
-
-    /**
-     * 🔧 추가: 포괄적 유효성 검사
-     */
     private void validateAlarmInfo(AlarmInfo alarmInfo) {
         if (alarmInfo == null) {
             throw new IllegalArgumentException("알람 정보가 제공되지 않았습니다.");
@@ -265,9 +216,6 @@ public class AlarmServiceImpl implements AlarmService {
         }
     }
 
-    /**
-     * 🔧 추가: 전화번호 유효성 검사
-     */
     private boolean isValidPhoneNumber(String phoneNumber) {
         if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
             return false;
@@ -278,9 +226,6 @@ public class AlarmServiceImpl implements AlarmService {
         return cleanPhone.length() >= 10 && cleanPhone.length() <= 11 && cleanPhone.startsWith("01");
     }
 
-    /**
-     * AlarmInfo를 Alarm 엔티티로 변환
-     */
     private Alarm convertToAlarm(AlarmInfo alarmInfo) {
         return Alarm.builder()
                 .recipientPhone(alarmInfo.getRecipientPhone())
@@ -293,13 +238,6 @@ public class AlarmServiceImpl implements AlarmService {
                 .build();
     }
 
-    // =====================================================================================
-    // 🔧 추가: 관리자용 메소드들
-    // =====================================================================================
-
-    /**
-     * 🔧 추가: 시스템 통계 조회
-     */
     @Transactional(readOnly = true)
     public AlarmSystemStats getSystemStats() {
         long totalAlarms = alarmRepository.count();
@@ -312,9 +250,6 @@ public class AlarmServiceImpl implements AlarmService {
                 .build();
     }
 
-    /**
-     * 🔧 추가: 만료된 알람 정리 (배치 작업)
-     */
     @Scheduled(fixedRate = 3600000) // 1시간마다 실행
     @Transactional
     public void cleanupExpiredAlarms() {
@@ -335,9 +270,6 @@ public class AlarmServiceImpl implements AlarmService {
         }
     }
 
-    /**
-     * 🔧 추가: 알람 시스템 통계 DTO
-     */
     @lombok.Builder
     @lombok.Data
     public static class AlarmSystemStats {

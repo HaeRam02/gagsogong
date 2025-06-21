@@ -60,6 +60,18 @@ const ScheduleMain = () => {
     setError(null);
   };
 
+  const formatDateTimeForBackend = (dateTimeString) => {
+  if (!dateTimeString) return null;
+  
+  if (dateTimeString.length === 16 && dateTimeString.includes('T')) {
+    const formatted = dateTimeString + ':00';
+    console.log(`날짜 형식 변환: ${dateTimeString} → ${formatted}`);
+    return formatted;
+  }
+  
+    return dateTimeString;
+  };
+
   // 🔧 수정: 데이터 검증 및 로깅 강화
   const handleScheduleSubmit = async ({submitData}) => {
     try {
@@ -67,6 +79,7 @@ const ScheduleMain = () => {
       
       // 🔧 수정: 전달받은 데이터 구조 검증 및 로깅
       console.log('handleScheduleSubmit - 전달받은 원본 데이터:', submitData);
+
       
       // 데이터 유효성 사전 검사
       if (!submitData) {
@@ -85,11 +98,11 @@ const ScheduleMain = () => {
       const normalizedScheduleData = {
         title: submitData.title,
         description: submitData.description || '',
-        startDate: submitData.startDate,
-        endDate: submitData.endDate,
+        startDate: formatDateTimeForBackend(submitData.startDate),
+        endDate: formatDateTimeForBackend(submitData.endDate),
         visibility: submitData.visibility || 'PUBLIC', // 기본값 명시적 설정
-        isAlarmEnabled: Boolean(submitData.isAlarmEnabled),
-        alarmTime: submitData.alarmTime || null,
+        alarmEnabled: submitData.alarmEnabled,
+        alarmTime: formatDateTimeForBackend(submitData.alarmTime)|| null,
         selectedParticipants: submitData.selectedParticipants || []
       };
 

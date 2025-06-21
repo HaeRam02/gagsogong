@@ -56,8 +56,8 @@ const validateAndNormalizeScheduleData = (scheduleData) => {
     startDate: scheduleData.startDate || '',
     endDate: scheduleData.endDate || '',
     visibility: scheduleData.visibility || 'PUBLIC', 
-    isAlarmEnabled: Boolean(scheduleData.isAlarmEnabled),
-    alarmTime: scheduleData.alarmTime || null,
+    alarmEnabled: Boolean(scheduleData.alarmEnabled),
+    alarmTime: scheduleData.alarmTime|| null,
     selectedParticipants: Array.isArray(scheduleData.selectedParticipants) 
       ? scheduleData.selectedParticipants 
       : []
@@ -111,8 +111,8 @@ const scheduleApiService = {
         startDate: formatDateTimeForBackend(normalizedData.startDate),
         endDate: formatDateTimeForBackend(normalizedData.endDate),
         visibility: backendVisibility,
-        alarmEnabled: normalizedData.isAlarmEnabled,
-        alarmTime: normalizedData.isAlarmEnabled 
+        alarmEnabled: normalizedData.alarmEnabled,
+        alarmTime: normalizedData.alarmEnabled 
           ? formatDateTimeForBackend(normalizedData.alarmTime) 
           : null,
         participantIds: normalizedData.selectedParticipants?.map(p => p.employeeId) || []

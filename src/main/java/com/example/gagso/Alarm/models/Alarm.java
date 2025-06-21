@@ -25,7 +25,7 @@ public class Alarm {
     @Column(name = "recipientPhone", length = 20, nullable = false)
     private String recipientPhone;
 
-    @Column(name = "targetId", length = 50, nullable = false)
+    @Column(name = "targetId", length = 100, nullable = false)
     private String targetId;
 
     @Column(name = "title", length = 20, nullable = false)

@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.GenericGenerator;
 
 import java.time.LocalDateTime;
 
@@ -26,9 +27,8 @@ import java.time.LocalDateTime;
 public class Participant {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "participantId")
-    private Long participantId;
+    @Column(name = "participant_id", length = 36, nullable = false)
+    private String participantId;
 
     @Column(name = "scheduleID", length = 36, nullable = false)
     private String scheduleId;
