@@ -22,14 +22,14 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
      * 직원 ID값을 받아 참여원 관계 중 해당 직원 ID를 갖는 참여원 관계의 일정 ID값을 반환
      * 설계 명세: findScheduleIdListByEmployeeId
      */
-    @Query("SELECT p.scheduleId FROM Participant p WHERE p.employeeId = :employeeId")
+    @Query("SELECT p.schedule_id FROM Participant p WHERE p.employee_id = :employeeId")
     List<String> findScheduleIdListByEmployeeId(@Param("employeeId") String employeeId);
 
     /**
      * 일정 ID를 받아 해당 일정의 참여원의 ID값 전부를 반환
      * 설계 명세: findParticipantListByScheduleId
      */
-    @Query("SELECT p.employeeId FROM Participant p WHERE p.scheduleId = :scheduleId")
+    @Query("SELECT p.employee_id FROM Participant p WHERE p.schedule_id = :scheduleId")
     List<String> findParticipantListByScheduleId(@Param("scheduleId") String scheduleId);
 
     /**
@@ -50,7 +50,7 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
     /**
      * 특정 일정의 참여자 수 조회
      */
-    @Query("SELECT COUNT(p) FROM Participant p WHERE p.scheduleId = :scheduleId")
+    @Query("SELECT COUNT(p) FROM Participant p WHERE p.schedule_id = :scheduleId")
     Long countByScheduleId(@Param("scheduleId") String scheduleId);
 
     /**
@@ -63,7 +63,7 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
      */
     @Modifying
     @Transactional
-    @Query("DELETE FROM Participant p WHERE p.scheduleId = :scheduleId")
+    @Query("DELETE FROM Participant p WHERE p.schedule_id = :scheduleId")
     void deleteByScheduleId(@Param("scheduleId") String scheduleId);
 
     /**
@@ -76,7 +76,7 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
     /**
      * 여러 참여자를 일괄 저장 (일정 등록 시 사용)
      */
-    @Query("SELECT p FROM Participant p WHERE p.scheduleId = :scheduleId AND p.employeeId IN :employeeIds")
+    @Query("SELECT p FROM Participant p WHERE p.schedule_id = :scheduleId AND p.employee_id IN :employeeIds")
     List<Participant> findByScheduleIdAndEmployeeIdIn(@Param("scheduleId") String scheduleId,
                                                       @Param("employeeIds") List<String> employeeIds);
 }
