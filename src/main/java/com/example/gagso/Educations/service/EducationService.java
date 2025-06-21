@@ -4,6 +4,7 @@ import com.example.gagso.Educations.models.Education;
 import com.example.gagso.Educations.repository.EducationRepository;
 import com.example.gagso.Educations.dto.EducationDto;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -30,6 +31,7 @@ public class EducationService {
         return repository.save(education);
     }
 
+    @Transactional
     public void create(EducationDto dto) {
         Education edu = new Education();
         edu.setEducationId(UUID.randomUUID().toString());
@@ -43,6 +45,6 @@ public class EducationService {
         edu.setAttachmentType(dto.getAttachment_type());
         edu.setAttachmentPath(dto.getAttachment_path());
 
-        repository.save(edu); // ✅ 여기 수정됨
+        repository.saveAndFlush(edu);
     }
 }

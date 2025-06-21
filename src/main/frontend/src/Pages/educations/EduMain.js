@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import styles from "./EduMain.module.css";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { UserContext } from "../../Context/UserContext";
 
 const EduMain = () => {
   const [showForm, setShowForm] = useState(false);
   const [educations, setEducations] = useState([]);
   const [filteredEducations, setFilteredEducations] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const {loggedInUser} = useContext(UserContext);
+
   const itemsPerPage = 5;
   const navigate = useNavigate();
 
@@ -16,6 +19,9 @@ const EduMain = () => {
       setCurrentPage(page);
     }
   };
+
+  console.log("EduMain 진입 시점 유저:", loggedInUser);
+
 
 
   const [form, setForm] = useState({
@@ -130,7 +136,15 @@ const EduMain = () => {
       <div className={styles.container}>
         <div className={styles.wrapper}>
           <div className={styles.submitRowRight}>
-            <button className={styles.submitBtn} onClick={() => setShowForm(true)}>교육정보 등록</button>
+            <button className={styles.submitBtn} onClick={() =>{
+            if(loggedInUser.role !== 'ADMIN'){
+              alert("권환이 없습니다");
+              return;
+            } 
+              setShowForm(true);
+          }}
+              >교육정보 등록</button>
+              
           </div>
           <h2 className={styles.title}>교육 목록 조회</h2>
           <div className={styles.formRow}>

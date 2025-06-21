@@ -1,4 +1,3 @@
-// src/App.js
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Home from './Pages/Home';
@@ -9,23 +8,27 @@ import ScheduleMain from './Pages/schedules/ScheduleMain';
 import TaskMain from './Pages/tasks/TaskMain';
 import UserMain from './Pages/users/UserMain';
 import Header from './Components/Header';
-
+import TaskCreateView from './Pages/tasks/TaskCreateView';
+import EduDetail from './Pages/educations/EduDetail';
+import { UserProvider } from './Context/UserContext'; 
 function App() {
   return (
-  <>
+  <UserProvider>
   <Header/>
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/club" element={<ClubMain />} />
       <Route path="/document" element={<DocuMain />} />
       <Route path="/education" element={<EduMain/>} />
+      <Route path="/education/:id" element={<EduDetail />} />
       <Route path="/schedule" element={<ScheduleMain />} />
       <Route path='/task' element={<TaskMain/>}/>
+      <Route path='/task/create' element={<TaskCreateView/>}/>
       <Route path="/user" element={<UserMain />} />
 
 
     </Routes>
-  </>
+  </UserProvider>
   );
 }
 

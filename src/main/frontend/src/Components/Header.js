@@ -1,8 +1,22 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import './Header.css';
+import { useContext } from "react";
+import { UserContext } from "../Context/UserContext";
 const Header = () => {
+    const { loggedInUser, setLoggedInUser, dummyUsers } = useContext(UserContext);
+    console.log(loggedInUser);
     const nav = useNavigate();
+
+    const toggleRole = () => {
+    const nextUser =
+      loggedInUser.role === 'EMPLOYEE'
+        ? dummyUsers.admin
+        : dummyUsers.employee;
+
+    setLoggedInUser(nextUser);
+  };
+
   return (
     <div>
       <header className="header">
@@ -17,8 +31,9 @@ const Header = () => {
 
         </nav>
         <div className="user-menu">
-          <button className="user-button">홍길동</button>
-          <button className="user-button">로그아웃</button>
+          <button className="user-button">{loggedInUser.name}</button>
+          <button className="user-button"
+          onClick={toggleRole}>로그아웃</button>
         </div>
       </header>
       </div>

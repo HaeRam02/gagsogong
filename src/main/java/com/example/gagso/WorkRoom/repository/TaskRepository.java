@@ -15,6 +15,4 @@ public interface TaskRepository extends JpaRepository<Task, String> {
     @Query("SELECT t FROM Task t WHERE t.title LIKE %:title%")
     List<Task> findByCondition(@Param("title") String title);
 
-    // 부서 ID로 업무 검색
-    List<Task> findByDeptId(String deptId);
 }
