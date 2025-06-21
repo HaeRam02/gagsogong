@@ -25,6 +25,9 @@ public class ScheduleRegistrationResult {
 
     /**
      * 등록된 일정 정보 (성공 시에만 포함)
+     * -- GETTER --
+     *  등록된 일정을 반환하는 메서드
+
      */
     private Schedule schedule;
 
@@ -38,13 +41,6 @@ public class ScheduleRegistrationResult {
      */
     public boolean isSuccess() {
         return result && validationResult != null && validationResult.isSuccess();
-    }
-
-    /**
-     * 등록된 일정을 반환하는 메서드
-     */
-    public Schedule getSchedule() {
-        return schedule;
     }
 
     /**

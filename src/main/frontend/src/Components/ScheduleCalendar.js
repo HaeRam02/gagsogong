@@ -307,7 +307,6 @@ const ScheduleCalendar = () => {
                     {daySchedules.map((schedule) => (
                       <div
                         key={schedule.scheduleId}
-                        onClick={() => handleScheduleClick(schedule)}
                         className={`schedule-item ${getVisibilityClass(schedule.visibility)}`}
                       >
                         <div className="schedule-header">
@@ -315,7 +314,7 @@ const ScheduleCalendar = () => {
                           <span className="schedule-title">{schedule.title}</span>
                         </div>
                         <div className="schedule-time">
-                          {formatTime(schedule.startDateTime)}
+                          {formatTime(schedule.startDate)}
                         </div>
                       </div>
                     ))}
