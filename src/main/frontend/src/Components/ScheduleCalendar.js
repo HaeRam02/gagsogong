@@ -39,7 +39,20 @@ const ScheduleCalendar = () => {
       
       // 실제 API 호출로 월별 일정 조회
       const data = await scheduleApiService.getMonthlySchedules(year, month);
-      setSchedules(data);
+      console.log("🔄 [loadSchedules] API 응답 데이터:", data);
+
+      const normalized = data.map(schedule => ({
+        ...schedule,
+        startDateTime: schedule.startDate,
+        endDateTime:   schedule.endDate
+        }));
+        console.log("🔄 [loadSchedules] 통일 후 schedules:", normalized);
+
+        const uniqueSchedules = normalized.filter((item, idx, arr) =>
+          arr.findIndex(x => x.scheduleId === item.scheduleId) === idx
+        );
+
+      setSchedules(uniqueSchedules);
       
     } catch (error) {
       console.error('일정 로드 실패:', error);
@@ -54,23 +67,50 @@ const ScheduleCalendar = () => {
 
   // 특정 날짜의 일정들 가져오기
  function getSchedulesForDate(schedules, targetDate) {
-  console.log("📋 schedules:", schedules);
-  console.log("📋 typeof schedules:", typeof schedules);
+  console.log("📋 [getSchedulesForDate] 전체 schedules:", schedules);
+  console.log("📋 [getSchedulesForDate] targetDate:", targetDate.toISOString().slice(0,10));
+
   if (!Array.isArray(schedules)) {
     console.error("❌ schedules is not an array!");
     return [];
   }
   return schedules.filter(schedule => {
-    const raw = schedule.startDateTime;
-    if (!raw) return false;                        // null/undefined 차단
-    const start = new Date(raw);
-    if (isNaN(start.getTime())) {                   // Invalid Date 차단
-      console.warn("Invalid date skipped:", raw);
-      return false;
-    }
-    return start.toISOString().slice(0, 10)
-         === targetDate.toISOString().slice(0, 10);
-  });
+    // 1) 원본 날짜/시간 문자열 꺼내기
+    const rawStart = schedule.startDateTime || schedule.startDate;
+    const rawEnd   = schedule.endDateTime   || schedule.endDate;
+    if (!rawStart || !rawEnd) return false;
+
+    // 2) Date 객체 생성
+    const start = new Date(rawStart);
+    const end   = new Date(rawEnd);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
+
+    // 3) 시간 정보 제거하고 '날짜'만 비교
+    const startDay  = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const endDay    = new Date(end.getFullYear(),   end.getMonth(),   end.getDate());
+    const targetDay = new Date(
+      targetDate.getFullYear(),
+      targetDate.getMonth(),
+      targetDate.getDate()
+    );
+
+    // 4) 시작일부터 종료일까지 포함되는 경우만 true
+    return startDay <= targetDay && targetDay <= endDay;
+});
+  // return schedules.filter(schedule => {
+  //   console.log("    · schedule 객체:", schedule);
+  //   const raw = schedule.startDateTime;
+  //   if (!raw) return false;                        // null/undefined 차단
+  //   const start = new Date(raw);
+  //   console.log("      ‣ raw startDateTime:", raw, "→ parsed:", start);
+  //   if (isNaN(start.getTime())) {                   // Invalid Date 차단
+  //     console.warn("Invalid date skipped:", raw);
+  //     return false;
+  //   }
+  //   return start.toISOString().slice(0, 10)
+  //        === targetDate.toISOString().slice(0, 10);
+  // });
+
 }
 
   // 달력 날짜 배열 생성
@@ -280,8 +320,9 @@ const ScheduleCalendar = () => {
           {/* 날짜 그리드 */}
           <div className="calendar-grid">
             {generateCalendarDays().map((date, index) => {
-
-              const daySchedules = getSchedulesForDate(date);
+              console.log(`▶ [render] date cell: ${date.toISOString().slice(0,10)}`);
+              const daySchedules = getSchedulesForDate(schedules, date);
+              console.log("    → daySchedules.length:", daySchedules.length, daySchedules);
 
               return (
                 <div key={index} className={getDateCellClass(date)}>

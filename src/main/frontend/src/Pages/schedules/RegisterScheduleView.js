@@ -224,14 +224,14 @@ const RegisterScheduleView = ({ onBack, onSubmit }) => {
 
     try {
       // API를 통해 일정 등록
-      await scheduleApiService.registerSchedule({
-        ...formData,
-        participants: selectedParticipants
-      });
+      // await scheduleApiService.registerSchedule({
+      //   ...formData,
+      //   participants: selectedParticipants
+      // });
       
       // 등록 성공 시 부모 컴포넌트에 알림
       if (onSubmit) {
-        onSubmit(formData);
+        onSubmit({ ...formData, selectedParticipants });
       }
       
     } catch (error) {
