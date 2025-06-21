@@ -140,4 +140,12 @@ public class ScheduleRegisterRequestDTO {
         return String.format("ScheduleRegisterRequestDTO{title='%s', startDate=%s, endDate=%s, alarmEnabled=%s}",
                 title, startDate, endDate, alarmEnabled);
     }
+
+    public LocalDateTime getStartDateTime() {
+        return startDate;
+    }
+
+    public LocalDateTime getEndDateTime() {
+        return endDate;
+    }
 }

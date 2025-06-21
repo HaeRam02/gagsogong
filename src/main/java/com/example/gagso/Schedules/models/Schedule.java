@@ -1,6 +1,5 @@
 package com.example.gagso.Schedules.models;
 
-import com.example.gagso.Schedules.models.Visibility;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -55,14 +54,14 @@ public class Schedule {
      */
     @Column(name = "start_date_time", nullable = false)
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime startDateTime;
+    private LocalDateTime startDate;
 
     /**
      * 일정 종료 일시
      */
     @Column(name = "end_date_time", nullable = false)
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    private LocalDateTime endDateTime;
+    private LocalDateTime endDate;
 
     /**
      * 일정 공개 범위
@@ -114,28 +113,28 @@ public class Schedule {
      */
     public boolean isOngoing() {
         LocalDateTime now = LocalDateTime.now();
-        return now.isAfter(startDateTime) && now.isBefore(endDateTime);
+        return now.isAfter(startDate) && now.isBefore(endDate);
     }
 
     /**
      * 비즈니스 메서드: 일정이 미래 일정인지 확인
      */
     public boolean isUpcoming() {
-        return LocalDateTime.now().isBefore(startDateTime);
+        return LocalDateTime.now().isBefore(startDate);
     }
 
     /**
      * 비즈니스 메서드: 일정이 종료되었는지 확인
      */
     public boolean isFinished() {
-        return LocalDateTime.now().isAfter(endDateTime);
+        return LocalDateTime.now().isAfter(endDate);
     }
 
     /**
      * 비즈니스 메서드: 일정 기간 (분 단위)
      */
     public long getDurationMinutes() {
-        return java.time.Duration.between(startDateTime, endDateTime).toMinutes();
+        return java.time.Duration.between(startDate, endDate).toMinutes();
     }
 
     /**
@@ -168,7 +167,7 @@ public class Schedule {
     @Override
     public String toString() {
         return String.format("Schedule{id='%s', title='%s', startTime=%s, endTime=%s}",
-                scheduleId, title, startDateTime, endDateTime);
+                scheduleId, title, startDate, endDate);
     }
 
     /**

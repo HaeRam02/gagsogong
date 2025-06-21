@@ -77,31 +77,37 @@ public class ScheduleValidator {
      * 설계 명세: checkStartEndTime
      */
     private void checkStartEndTime(ScheduleRegisterRequestDTO reqSchedule, ValidationResult result) {
-        LocalDateTime startDateTime = reqSchedule.getStartDateTime();
-        LocalDateTime endDateTime = reqSchedule.getEndDateTime();
+        // ✅ 수정: startDate, endDate getter 사용
+        LocalDateTime startDateTime = reqSchedule.getStartDate();
+        LocalDateTime endDateTime = reqSchedule.getEndDate();
 
         if (startDateTime == null) {
-            result.addError("startDateTime", "시작 날짜는 필수 입력 항목입니다.");
+            result.addError("startDate", "시작 날짜와 시간을 입력해주세요.");
             return;
         }
 
         if (endDateTime == null) {
-            result.addError("endDateTime", "종료 날짜는 필수 입력 항목입니다.");
+            result.addError("endDate", "종료 날짜와 시간을 입력해주세요.");
             return;
         }
 
         if (startDateTime.isAfter(endDateTime)) {
-            result.addError("startDateTime", "시작 날짜는 종료 날짜보다 이전이어야 합니다.");
+            result.addError("startDate", "시작 날짜는 종료 날짜보다 이전이어야 합니다.");
         }
 
         if (startDateTime.equals(endDateTime)) {
-            result.addError("startDateTime", "시작 날짜와 종료 날짜는 같을 수 없습니다.");
+            result.addError("startDate", "시작 날짜와 종료 날짜는 같을 수 없습니다.");
         }
 
         // 과거 날짜 검증 (선택적)
         LocalDateTime now = LocalDateTime.now();
         if (endDateTime.isBefore(now)) {
-            result.addError("endDateTime", "종료 날짜는 현재 시간 이후여야 합니다.");
+            result.addError("endDate", "종료 날짜는 현재 시간 이후여야 합니다.");
+        }
+
+        // 시작 날짜도 현재 시간 이후인지 검증 추가
+        if (startDateTime.isBefore(now)) {
+            result.addError("startDate", "시작 날짜는 현재 시간 이후여야 합니다.");
         }
     }
 
@@ -145,8 +151,8 @@ public class ScheduleValidator {
                 return;
             }
 
-            // 알림 시간이 일정 시작 시간보다 이후인지 검사
-            LocalDateTime startDateTime = reqSchedule.getStartDateTime();
+            // ✅ 수정: 올바른 getter 메소드 사용
+            LocalDateTime startDateTime = reqSchedule.getStartDate();
             if (startDateTime != null && alarmTime.isAfter(startDateTime)) {
                 result.addError("alarmTime", "알림 시간은 일정 시작 시간 이전이어야 합니다.");
             }

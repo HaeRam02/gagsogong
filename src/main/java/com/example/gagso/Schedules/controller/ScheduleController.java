@@ -1,8 +1,8 @@
-// src/main/java/com/example/gagso/Schedules/controller/ScheduleController.java
 package com.example.gagso.Schedules.controller;
 
 import com.example.gagso.Schedules.dto.ScheduleRegisterRequestDTO;
 import com.example.gagso.Schedules.dto.ScheduleRegistrationResult;
+import com.example.gagso.Schedules.dto.ScheduleResponseDTO;
 import com.example.gagso.Schedules.models.Schedule;
 import com.example.gagso.Schedules.service.ScheduleService;
 import lombok.RequiredArgsConstructor;
@@ -26,9 +26,6 @@ import java.util.List;
 public class ScheduleController {
 
     private final ScheduleService scheduleService;
-
-    // TODO: 직원 정보 조회를 위한 서비스 (향후 연동)
-    // private final EmployeeInfoProvider employeeInfoProvider;
 
     /**
      * 일정 정보를 전달받아 일정 등록을 요청
@@ -65,11 +62,11 @@ public class ScheduleController {
     }
 
     /**
-     * 파라미터로 받은 직원의 전체 일정 조회 화면을 출력
+     * 🔧 수정: 파라미터로 받은 직원의 전체 일정 조회 화면을 출력 (참여자 정보 포함)
      * 설계 명세: displayAllSchedule
      */
     @GetMapping
-    public ResponseEntity<List<Schedule>> displayAllSchedules(
+    public ResponseEntity<List<ScheduleResponseDTO>> displayAllSchedules(
             @RequestHeader(value = "X-Employee-Id", required = false) String employeeId) {
 
         // TODO: 실제 환경에서는 JWT 토큰이나 세션에서 employeeId 추출
@@ -80,7 +77,7 @@ public class ScheduleController {
         log.info("전체 일정 조회 요청: 사용자 {}", employeeId);
 
         try {
-            List<Schedule> schedules = scheduleService.getAccessibleSchedules(employeeId);
+            List<ScheduleResponseDTO> schedules = scheduleService.getAccessibleSchedules(employeeId);
             log.info("전체 일정 조회 완료: {} 건", schedules.size());
             return ResponseEntity.ok(schedules);
 
@@ -91,10 +88,33 @@ public class ScheduleController {
     }
 
     /**
-     * 월별 일정 조회 (달력 화면용)
+     * 🔧 수정: 특정 일정 상세 조회 (참여자 정보 포함)
+     * 설계 명세: displaySchedule
+     */
+    @GetMapping("/{scheduleId}")
+    public ResponseEntity<ScheduleResponseDTO> displaySchedule(@PathVariable String scheduleId) {
+        log.info("일정 상세 조회 요청: 일정 ID {}", scheduleId);
+
+        try {
+            ScheduleResponseDTO schedule = scheduleService.getScheduleWithParticipants(scheduleId);
+            log.info("일정 상세 조회 완료: {}", schedule.getTitle());
+            return ResponseEntity.ok(schedule);
+
+        } catch (IllegalArgumentException e) {
+            log.warn("조회할 일정을 찾을 수 없음: {}", scheduleId);
+            return ResponseEntity.notFound().build();
+
+        } catch (Exception e) {
+            log.error("일정 상세 조회 중 오류 발생", e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * 🔧 수정: 월별 일정 조회 (달력 화면용) - 참여자 정보 포함
      */
     @GetMapping("/monthly")
-    public ResponseEntity<List<Schedule>> getMonthlySchedules(
+    public ResponseEntity<List<ScheduleResponseDTO>> getMonthlySchedules(
             @RequestParam("year") int year,
             @RequestParam("month") int month,
             @RequestHeader(value = "X-Employee-Id", required = false) String employeeId) {
@@ -107,7 +127,7 @@ public class ScheduleController {
         log.info("월별 일정 조회 요청: 사용자 {}, 년월 {}-{}", employeeId, year, month);
 
         try {
-            List<Schedule> schedules = scheduleService.getAccessibleSchedulesByMonth(employeeId, year, month);
+            List<ScheduleResponseDTO> schedules = scheduleService.getAccessibleSchedulesByMonth(employeeId, year, month);
             log.info("월별 일정 조회 완료: {} 건", schedules.size());
             return ResponseEntity.ok(schedules);
 
@@ -118,10 +138,10 @@ public class ScheduleController {
     }
 
     /**
-     * 일별 일정 조회
+     * 🔧 수정: 일별 일정 조회 - 참여자 정보 포함
      */
     @GetMapping("/daily")
-    public ResponseEntity<List<Schedule>> getDailySchedules(
+    public ResponseEntity<List<ScheduleResponseDTO>> getDailySchedules(
             @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestHeader(value = "X-Employee-Id", required = false) String employeeId) {
 
@@ -132,7 +152,7 @@ public class ScheduleController {
         log.info("일별 일정 조회 요청: 사용자 {}, 날짜 {}", employeeId, date);
 
         try {
-            List<Schedule> schedules = scheduleService.getAccessibleSchedulesByDate(employeeId, date);
+            List<ScheduleResponseDTO> schedules = scheduleService.getAccessibleSchedulesByDate(employeeId, date);
             log.info("일별 일정 조회 완료: {} 건", schedules.size());
             return ResponseEntity.ok(schedules);
 
@@ -193,10 +213,10 @@ public class ScheduleController {
     }
 
     /**
-     * 오늘의 일정 조회 (빠른 조회용)
+     * 🔧 수정: 오늘의 일정 조회 (빠른 조회용) - 참여자 정보 포함
      */
     @GetMapping("/today")
-    public ResponseEntity<List<Schedule>> getTodaySchedules(
+    public ResponseEntity<List<ScheduleResponseDTO>> getTodaySchedules(
             @RequestHeader(value = "X-Employee-Id", required = false) String employeeId) {
 
         if (employeeId == null) {
@@ -207,7 +227,7 @@ public class ScheduleController {
 
         try {
             LocalDate today = LocalDate.now();
-            List<Schedule> schedules = scheduleService.getAccessibleSchedulesByDate(employeeId, today);
+            List<ScheduleResponseDTO> schedules = scheduleService.getAccessibleSchedulesByDate(employeeId, today);
             log.info("오늘 일정 조회 완료: {} 건", schedules.size());
             return ResponseEntity.ok(schedules);
 
@@ -234,56 +254,19 @@ public class ScheduleController {
             LocalDateTime now = LocalDateTime.now();
             LocalDateTime weekLater = now.plusDays(7);
 
-            // Repository에서 직접 조회 (더 효율적)
-            List<Schedule> schedules = scheduleService.getScheduleRepository()
-                    .findUpcomingSchedulesByEmployeeId(employeeId, now, weekLater);
+            // TODO: ScheduleService에 기간별 조회 메서드 추가 필요
+            List<Schedule> schedules = scheduleService.getSchedulesByEmployee(employeeId);
 
-            log.info("다가오는 일정 조회 완료: {} 건", schedules.size());
-            return ResponseEntity.ok(schedules);
+            // 7일 이내 일정만 필터링
+            List<Schedule> upcomingSchedules = schedules.stream()
+                    .filter(s -> s.getStartDate().isAfter(now) && s.getStartDate().isBefore(weekLater))
+                    .toList();
+
+            log.info("다가오는 일정 조회 완료: {} 건", upcomingSchedules.size());
+            return ResponseEntity.ok(upcomingSchedules);
 
         } catch (Exception e) {
             log.error("다가오는 일정 조회 중 오류 발생", e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * 파라미터로 받은 개별 일정 조회 화면을 출력
-     * 설계 명세: displaySchedule
-     */
-    @GetMapping("/{scheduleId}")
-    public ResponseEntity<Schedule> displaySchedule(@PathVariable String scheduleId) {
-        log.info("개별 일정 조회 요청: 일정 ID {}", scheduleId);
-
-        try {
-            Schedule schedule = scheduleService.getSchedule(scheduleId);
-            log.info("개별 일정 조회 완료: {}", schedule.getTitle());
-            return ResponseEntity.ok(schedule);
-
-        } catch (IllegalArgumentException e) {
-            log.warn("일정을 찾을 수 없음: {}", scheduleId);
-            return ResponseEntity.notFound().build();
-
-        } catch (Exception e) {
-            log.error("개별 일정 조회 중 오류 발생", e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    /**
-     * 특정 직원의 일정 목록 조회
-     */
-    @GetMapping("/employee/{employeeId}")
-    public ResponseEntity<List<Schedule>> getSchedulesByEmployee(@PathVariable String employeeId) {
-        log.info("직원별 일정 조회 요청: 직원 ID {}", employeeId);
-
-        try {
-            List<Schedule> schedules = scheduleService.getSchedulesByEmployee(employeeId);
-            log.info("직원별 일정 조회 완료: {} 건", schedules.size());
-            return ResponseEntity.ok(schedules);
-
-        } catch (Exception e) {
-            log.error("직원별 일정 조회 중 오류 발생", e);
             return ResponseEntity.internalServerError().build();
         }
     }

@@ -12,8 +12,6 @@ const ScheduleMain = () => {
   const [currentView, setCurrentView] = useState('list'); // 'list', 'create', 'detail'
   const [selectedSchedule, setSelectedSchedule] = useState(null);
 
-  // 임시 더미 데이터 제거 - 실제 API에서 데이터 가져옴
-
   useEffect(() => {
     // 컴포넌트 마운트 시 일정 목록 로드
     loadSchedules();
@@ -25,7 +23,7 @@ const ScheduleMain = () => {
     
     try {
       const data = await scheduleApiService.getSchedules();
-      setSchedules(data);
+      setSchedules(data || []); // 🔧 안전한 기본값 설정
     } catch (error) {
       console.error('일정 목록 로드 실패:', error);
       setError(error.message);
@@ -84,23 +82,82 @@ const ScheduleMain = () => {
     }
   };
 
+  // 🔧 안전한 날짜 포맷팅
   const formatDateTime = (dateTimeString) => {
-    const date = new Date(dateTimeString);
-    return date.toLocaleString('ko-KR', {
-      year: 'numeric',
-      month: '2-digit', 
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    try {
+      if (!dateTimeString) return '날짜 없음';
+      const date = new Date(dateTimeString);
+      if (isNaN(date.getTime())) return '잘못된 날짜';
+      
+      return date.toLocaleString('ko-KR', {
+        year: 'numeric',
+        month: '2-digit', 
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      console.error('날짜 포맷팅 오류:', error);
+      return '날짜 오류';
+    }
   };
 
   const getVisibilityText = (visibility) => {
     switch(visibility) {
       case 'PUBLIC': return '전체 공개';
+      case 'GROUP': return '그룹 공개';
       case 'DEPARTMENT': return '부서 공개';
       case 'PRIVATE': return '비공개';
-      default: return visibility;
+      default: return visibility || '알 수 없음';
+    }
+  };
+
+  // 🔧 안전한 참여자 표시 함수
+  const renderParticipants = (schedule) => {
+    try {
+      // participants가 배열인지 확인
+      if (Array.isArray(schedule.participants)) {
+        return schedule.participants.length > 0 
+          ? schedule.participants.join(', ')
+          : '참여자 없음';
+      }
+      
+      // participants가 객체나 다른 형태인 경우
+      if (schedule.participants && typeof schedule.participants === 'object') {
+        return '참여자 정보 있음';
+      }
+      
+      // participants가 없는 경우
+      return '참여자 정보 없음';
+    } catch (error) {
+      console.error('참여자 렌더링 오류:', error);
+      return '참여자 정보 오류';
+    }
+  };
+
+  // 🔧 안전한 상세 참여자 렌더링
+  const renderDetailParticipants = (schedule) => {
+    try {
+      if (!schedule || !schedule.participants) {
+        return <span className="no-participants">참여자 정보 없음</span>;
+      }
+
+      if (Array.isArray(schedule.participants)) {
+        if (schedule.participants.length === 0) {
+          return <span className="no-participants">참여자 없음</span>;
+        }
+        
+        return schedule.participants.map((participant, index) => (
+          <span key={index} className="participant-tag">
+            {participant}
+          </span>
+        ));
+      }
+
+      return <span className="participant-info">참여자 정보 있음</span>;
+    } catch (error) {
+      console.error('상세 참여자 렌더링 오류:', error);
+      return <span className="participant-error">참여자 정보 오류</span>;
     }
   };
 
@@ -145,19 +202,19 @@ const ScheduleMain = () => {
             <div className="schedule-grid">
               {schedules.map((schedule) => (
                 <div 
-                  key={schedule.scheduleId} 
+                  key={schedule.scheduleId || schedule.id} 
                   className="schedule-card"
                   onClick={() => handleViewSchedule(schedule)}
                 >
                   <div className="schedule-card-header">
-                    <h3 className="schedule-title">{schedule.title}</h3>
-                    <span className={`visibility-badge ${schedule.visibility.toLowerCase()}`}>
+                    <h3 className="schedule-title">{schedule.title || '제목 없음'}</h3>
+                    <span className={`visibility-badge ${(schedule.visibility || 'private').toLowerCase()}`}>
                       {getVisibilityText(schedule.visibility)}
                     </span>
                   </div>
                   
                   <p className="schedule-description">
-                    {schedule.description}
+                    {schedule.description || '설명 없음'}
                   </p>
                   
                   <div className="schedule-info">
@@ -169,11 +226,12 @@ const ScheduleMain = () => {
                     </div>
                   </div>
                   
+                  {/* 🔧 안전한 참여자 표시 */}
                   <div className="schedule-participants">
-                    <strong>참여자:</strong> {schedule.participants.join(', ')}
+                    <strong>참여자:</strong> {renderParticipants(schedule)}
                   </div>
                   
-                  {schedule.isAlarmEnabled && (
+                  {schedule.alarmEnabled && (
                     <div className="alarm-indicator">
                       🔔 알람 설정됨
                     </div>
@@ -203,15 +261,15 @@ const ScheduleMain = () => {
       {selectedSchedule && (
         <div className="schedule-detail">
           <div className="detail-section">
-            <h3>{selectedSchedule.title}</h3>
-            <span className={`visibility-badge ${selectedSchedule.visibility.toLowerCase()}`}>
+            <h3>{selectedSchedule.title || '제목 없음'}</h3>
+            <span className={`visibility-badge ${(selectedSchedule.visibility || 'private').toLowerCase()}`}>
               {getVisibilityText(selectedSchedule.visibility)}
             </span>
           </div>
 
           <div className="detail-section">
             <h4>설명</h4>
-            <p>{selectedSchedule.description}</p>
+            <p>{selectedSchedule.description || '설명 없음'}</p>
           </div>
 
           <div className="detail-section">
@@ -225,15 +283,11 @@ const ScheduleMain = () => {
           <div className="detail-section">
             <h4>참여자</h4>
             <div className="participants-list">
-              {selectedSchedule.participants.map((participant, index) => (
-                <span key={index} className="participant-tag">
-                  {participant}
-                </span>
-              ))}
+              {renderDetailParticipants(selectedSchedule)}
             </div>
           </div>
 
-          {selectedSchedule.isAlarmEnabled && (
+          {selectedSchedule.alarmEnabled && selectedSchedule.alarmTime && (
             <div className="detail-section">
               <h4>알람</h4>
               <p>🔔 {formatDateTime(selectedSchedule.alarmTime)}</p>
@@ -242,7 +296,7 @@ const ScheduleMain = () => {
 
           <div className="detail-section">
             <h4>작성자</h4>
-            <p>{selectedSchedule.createdBy}</p>
+            <p>{selectedSchedule.createdBy || selectedSchedule.employeeId || '작성자 정보 없음'}</p>
           </div>
         </div>
       )}
