@@ -434,7 +434,7 @@ const RegisterScheduleView = ({ onBack, onSubmit }) => {
                       <div className="employee-info">
                         <div className="employee-name">{employee.name}</div>
                         <div className="employee-details">
-                          {employee.department} · {employee.position}
+                          {employee.deptName}
                         </div>
                       </div>
                     </div>
