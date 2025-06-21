@@ -202,11 +202,9 @@ public class ScheduleService {
     /**
      * 특정 직원의 일정 목록 조회
      */
-    @Transactional(readOnly = true)
     public List<Schedule> getSchedulesByEmployee(String employeeId) {
-        return scheduleRepository.findByEmployeeIdOrderByStartDateTimeDesc(employeeId);
+        return scheduleRepository.findByEmployeeIdOrderByStartDateDesc(employeeId);
     }
-
     /**
      * 🔧 수정: 월별 일정 조회 (성능 최적화용) - 참여자 정보 포함
      */

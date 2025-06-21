@@ -152,13 +152,13 @@ public interface ScheduleRepository extends JpaRepository<Schedule, String> {
      */
     @Modifying
     @Transactional
-    @Query("DELETE FROM Schedule s WHERE s.employeeId = :employeeId")
+    @Query("DELETE FROM Schedule s WHERE s.employee_id = :employeeId")
     void deleteByEmployeeId(@Param("employeeId") String employeeId);
 
     /**
      * 🔧 추가: 알림이 설정된 일정 조회 (알림 시스템용)
      */
-    @Query("SELECT s FROM Schedule s WHERE s.alarmEnabled = true AND s.alarmTime BETWEEN :start AND :end")
+    @Query("SELECT s FROM Schedule s WHERE s.alarm_enabled = true AND s.alarm_time BETWEEN :start AND :end")
     List<Schedule> findSchedulesWithAlarmBetween(@Param("start") LocalDateTime start,
                                                  @Param("end") LocalDateTime end);
 
@@ -166,11 +166,12 @@ public interface ScheduleRepository extends JpaRepository<Schedule, String> {
      * 🔧 추가: 오늘 일정 조회 (빠른 조회용)
      */
     @Query("SELECT s FROM Schedule s " +
-            "WHERE DATE(s.startDate) = CURRENT_DATE " +
-            "   OR DATE(s.endDate) = CURRENT_DATE " +
-            "   OR (DATE(s.startDate) < CURRENT_DATE AND DATE(s.endDate) > CURRENT_DATE) " +
+            "WHERE (s.startDate >= :startOfDay AND s.startDate < :endOfDay) " +
+            "   OR (s.endDate >= :startOfDay AND s.endDate < :endOfDay) " +
+            "   OR (s.startDate < :startOfDay AND s.endDate > :endOfDay) " +
             "ORDER BY s.startDate")
-    List<Schedule> findTodaySchedules();
+    List<Schedule> findTodaySchedules(@Param("startOfDay") LocalDateTime startOfDay,
+                                      @Param("endOfDay") LocalDateTime endOfDay);
 
     /**
      * 🔧 추가: 특정 직원의 오늘 일정 조회
@@ -180,11 +181,13 @@ public interface ScheduleRepository extends JpaRepository<Schedule, String> {
             "WHERE (s.employeeId = :employeeId " +
             "       OR p.employeeId = :employeeId " +
             "       OR s.visibility = 'PUBLIC') " +
-            "  AND (DATE(s.startDate) = CURRENT_DATE " +
-            "       OR DATE(s.endDate) = CURRENT_DATE " +
-            "       OR (DATE(s.startDate) < CURRENT_DATE AND DATE(s.endDate) > CURRENT_DATE)) " +
+            "  AND ((s.startDate >= :startOfDay AND s.startDate < :endOfDay) " +
+            "       OR (s.endDate >= :startOfDay AND s.endDate < :endOfDay) " +
+            "       OR (s.startDate < :startOfDay AND s.endDate > :endOfDay)) " +
             "ORDER BY s.startDate")
-    List<Schedule> findTodaySchedulesByEmployee(@Param("employeeId") String employeeId);
+    List<Schedule> findTodaySchedulesByEmployee(@Param("employeeId") String employeeId,
+                                                @Param("startOfDay") LocalDateTime startOfDay,
+                                                @Param("endOfDay") LocalDateTime endOfDay);
 
-    List<Schedule> findByEmployeeIdOrderByStartDateTimeDesc(String employeeId);
+
 }
