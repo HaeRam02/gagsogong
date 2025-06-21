@@ -113,7 +113,6 @@ const scheduleApiService = {
       const requestDto = {
         title: normalizedData.title,
         description: normalizedData.description,
-        // ✅ startDate, endDate로 변경
         startDate: formatDateTimeForBackend(normalizedData.startDate),
         endDate: formatDateTimeForBackend(normalizedData.endDate),
         visibility: backendVisibility,
@@ -276,63 +275,88 @@ const scheduleApiService = {
    */
   async getEmployees(keyword) {
     try {
-      // TODO: 실제 직원 검색 API 구현
+      console.log('직원 검색 요청:', keyword);
+      
+      // 🔧 수정: 실제 백엔드 API 호출
       const response = await axios.get(`/api/employees/search`, {
-        params: { keyword }
+        params: { 
+          name: keyword  // 백엔드 컨트롤러의 @RequestParam String name과 일치
+        }
       });
+      
+      console.log('직원 검색 성공:', response.data);
       return response.data;
+      
     } catch (error) {
       console.error('직원 검색 실패:', error);
       
-      // 임시 목업 데이터 반환 (개발용)
-      const mockEmployees = [
-        { employeeId: 'EMP001', name: '홍길동', deptName: '개발팀'},
-        { employeeId: 'EMP002', name: '김철수', deptName: '개발팀'},
-        { employeeId: 'EMP003', name: '이영희', deptName: '기획팀'},
-        { employeeId: 'EMP004', name: '박미영', deptName: '디자인팀'},
-        { employeeId: 'EMP005', name: '정수호', deptName: '개발팀' },
-        { employeeId: 'EMP006', name: '최지영', deptName: '마케팅팀' }
-      ].filter(emp => emp.name.includes(keyword));
+      // 🔧 수정: 백엔드 API 호출 실패 시 목업 데이터로 fallback
+      console.warn('백엔드 API 실패, 목업 데이터 사용');
       
+      const mockEmployees = [
+        { employeeId: 'EMP001', name: '홍길동', deptName: '개발팀', phoneNum: '010-1234-5678' },
+        { employeeId: 'EMP002', name: '김철수', deptName: '개발팀', phoneNum: '010-2345-6789' },
+        { employeeId: 'EMP003', name: '이영희', deptName: '기획팀', phoneNum: '010-3456-7890' },
+        { employeeId: 'EMP004', name: '박미영', deptName: '디자인팀', phoneNum: '010-4567-8901' },
+        { employeeId: 'EMP005', name: '정수호', deptName: '개발팀', phoneNum: '010-5678-9012' },
+        { employeeId: 'EMP006', name: '최지영', deptName: '마케팅팀', phoneNum: '010-6789-0123' }
+      ].filter(emp => 
+        emp.name.includes(keyword) || 
+        emp.deptName.includes(keyword) || 
+        emp.employeeId.includes(keyword)
+      );
+      
+      console.log('목업 데이터 검색 결과:', mockEmployees);
       return mockEmployees;
     }
   },
 
  /**
-   * 일정 목록 조회
-   * @param {string} employeeId - 직원 ID
+   * 🔧 디버깅 강화: 일정 목록 조회
+   * @param {string} employeeId - 직원 ID (선택사항)
    * @returns {Promise<Array>} 일정 목록
    */
-  async getSchedules(employeeId) {
+  async getSchedules(employeeId = null) {
     try {
+      const currentUser = getCurrentUser();
+      const targetEmployeeId = employeeId || currentUser.employeeId;
+
+      
       const response = await axios.get(API_BASE_URL, {
-        params: { employeeId }
+        headers: {
+          'X-Employee-Id': targetEmployeeId
+        }
       });
+
+      
+      if (Array.isArray(response.data)) {
+        
+        if (response.data.length > 0) {
+          const firstSchedule = response.data[0];
+          
+          Object.keys(firstSchedule).forEach(key => {
+            console.log(`    ∟ ${key}:`, firstSchedule[key], `(${typeof firstSchedule[key]})`);
+          });
+          
+          // 참여자 관련 필드 특별 확인
+          if ('participants' in firstSchedule) {
+            if (Array.isArray(firstSchedule.participants) && firstSchedule.participants.length > 0) {
+            }
+          }
+          
+          if ('participantIds' in firstSchedule) {
+            console.log('    - 배열 여부:', Array.isArray(firstSchedule.participantIds));
+          }
+        }
+      }
+
       return response.data;
+      
     } catch (error) {
-      console.error('일정 조회 실패:', error);
       const errorMessage = handleApiError(error, '일정 조회에 실패했습니다.');
       throw new Error(errorMessage);
     }
   },
-
-  /**
-   * 특정 일정 상세 조회
-   * @param {string} scheduleId - 일정 ID
-   * @returns {Promise<Object>} 일정 상세 정보 (참여자 정보 포함)
-   */
-  async getScheduleById(scheduleId) {
-    try {
-      console.log('일정 상세 조회 요청:', scheduleId);
-      const response = await axios.get(`${API_BASE_URL}/${scheduleId}`);
-      console.log('일정 상세 조회 응답:', response.data);
-      return response.data;
-    } catch (error) {
-      console.error('일정 상세 조회 실패:', error);
-      const errorMessage = handleApiError(error, '일정 조회에 실패했습니다.');
-      throw new Error(errorMessage);
-    }
-  }
 };
 
 /**

@@ -57,6 +57,7 @@ public class ScheduleService {
     public ScheduleRegistrationResult register(ScheduleRegisterRequestDTO scheduleDTO, String employeeId) {
         // 1. 요청 DTO에 작성자 정보 설정
         scheduleDTO.setEmployeeId(employeeId);
+        System.out.println("##################################" + scheduleDTO.getParticipantIds());
 
         // 2. 유효성 검사
         ScheduleRegistrationResult validationResult = validator.validate(scheduleDTO);
@@ -102,6 +103,12 @@ public class ScheduleService {
             List<Schedule> schedules = scheduleRepository.findAccessibleSchedulesByEmployeeId(employeeId);
             log.info("직원 {}의 접근 가능한 일정 조회 완료: {} 건", employeeId, schedules.size());
 
+            List<ScheduleResponseDTO> result = schedules.stream()
+                    .map(this::convertToScheduleResponseDTO)
+                    .toList();
+
+            System.out.println("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@"+result.getFirst().getParticipantCount());
+
             // 🔧 각 일정에 참여자 정보 포함해서 DTO로 변환
             return schedules.stream()
                     .map(this::convertToScheduleResponseDTO)
@@ -120,6 +127,7 @@ public class ScheduleService {
         try {
             // 참여자 목록 조회
             List<String> participantIds = participantRepository.findParticipantListByScheduleId(schedule.getScheduleId());
+            System.out.println("pppppppppppppppppppppppppppppppppp"+participantIds);
 
             // 참여자 이름 조회 (employeeId -> name 변환)
             List<String> participantNames = participantIds.stream()
@@ -267,6 +275,8 @@ public class ScheduleService {
      */
     @Transactional(readOnly = true)
     public List<String> getParticipantList(String scheduleId) {
+        List<String> result = participantRepository.findParticipantListByScheduleId(scheduleId);
+        System.out.println("===================================" + result.size());
         return participantRepository.findParticipantListByScheduleId(scheduleId);
     }
 
@@ -312,6 +322,9 @@ public class ScheduleService {
                     .collect(Collectors.toList());
 
             participantRepository.saveAll(participants);
+
+            System.out.println("----------------------" + participantRepository.findParticipantListByScheduleId(scheduleId));
+
             log.info("참여자 저장 완료: 일정 ID {}, 참여자 {} 명", scheduleId, participants.size());
         }
     }

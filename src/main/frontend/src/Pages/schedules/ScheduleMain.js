@@ -61,36 +61,36 @@ const ScheduleMain = () => {
   };
 
   // 🔧 수정: 데이터 검증 및 로깅 강화
-  const handleScheduleSubmit = async (scheduleData) => {
+  const handleScheduleSubmit = async ({submitData}) => {
     try {
       setLoading(true);
       
       // 🔧 수정: 전달받은 데이터 구조 검증 및 로깅
-      console.log('handleScheduleSubmit - 전달받은 원본 데이터:', scheduleData);
+      console.log('handleScheduleSubmit - 전달받은 원본 데이터:', submitData);
       
       // 데이터 유효성 사전 검사
-      if (!scheduleData) {
+      if (!submitData) {
         throw new Error('일정 데이터가 제공되지 않았습니다.');
       }
       
-      if (!scheduleData.title || !scheduleData.title.trim()) {
+      if (!submitData.title || !submitData.title.trim()) {
         throw new Error('일정 제목은 필수입니다.');
       }
       
-      if (!scheduleData.startDate || !scheduleData.endDate) {
+      if (!submitData.startDate || !submitData.endDate) {
         throw new Error('시작 날짜와 종료 날짜는 필수입니다.');
       }
 
       // 🔧 수정: 데이터 정규화 (필요시 기본값 설정)
       const normalizedScheduleData = {
-        title: scheduleData.title,
-        description: scheduleData.description || '',
-        startDate: scheduleData.startDate,
-        endDate: scheduleData.endDate,
-        visibility: scheduleData.visibility || 'PUBLIC', // 기본값 명시적 설정
-        isAlarmEnabled: Boolean(scheduleData.isAlarmEnabled),
-        alarmTime: scheduleData.alarmTime || null,
-        selectedParticipants: scheduleData.selectedParticipants || []
+        title: submitData.title,
+        description: submitData.description || '',
+        startDate: submitData.startDate,
+        endDate: submitData.endDate,
+        visibility: submitData.visibility || 'PUBLIC', // 기본값 명시적 설정
+        isAlarmEnabled: Boolean(submitData.isAlarmEnabled),
+        alarmTime: submitData.alarmTime || null,
+        selectedParticipants: submitData.selectedParticipants || []
       };
 
       console.log('handleScheduleSubmit - 정규화된 데이터:', normalizedScheduleData);
@@ -164,35 +164,45 @@ const ScheduleMain = () => {
     }
   };
 
-  const renderParticipants = (schedule) => {
+    const renderParticipants = (schedule) => {
+    console.log('🔍 renderParticipants 호출:', schedule.participants);
+    
+    // 참여자 데이터가 없는 경우
     if (!schedule.participants || schedule.participants.length === 0) {
       return '참여자 없음';
     }
     
     if (schedule.participants.length === 1) {
-      return schedule.participants[0].name || schedule.participants[0].employeeId;
+      return schedule.participants[0];
     }
     
-    return `${schedule.participants[0].name || schedule.participants[0].employeeId} 외 ${schedule.participants.length - 1}명`;
+    return `${schedule.participants[0]} 외 ${schedule.participants.length - 1}명`;
   };
 
   const renderDetailParticipants = (schedule) => {
+    console.log('🔍 renderDetailParticipants 호출:', schedule.participants, schedule.participantIds);
+    
     if (!schedule.participants || schedule.participants.length === 0) {
       return <div className="no-participants">참여자가 없습니다.</div>;
     }
     
+    
     return (
       <div className="participants-grid">
-        {schedule.participants.map((participant, index) => (
-          <div key={participant.employeeId || index} className="participant-item">
-            <span className="participant-name">
-              {participant.name || participant.employeeId}
-            </span>
-            {participant.deptName && (
-              <span className="participant-dept">({participant.deptName})</span>
-            )}
-          </div>
-        ))}
+        {schedule.participants.map((participantName, index) => {
+          const participantId = schedule.participantIds?.[index] || `unknown-${index}`;
+          
+          return (
+            <div key={participantId} className="participant-item">
+              <span className="participant-name">
+                {participantName}
+              </span>
+              <span className="participant-dept">
+                ({participantId})
+              </span>
+            </div>
+          );
+        })}
       </div>
     );
   };

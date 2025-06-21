@@ -29,34 +29,19 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
      * 일정 ID를 받아 해당 일정의 참여원의 ID값 전부를 반환
      * 설계 명세: findParticipantListByScheduleId
      */
-    @Query("SELECT p.employeeId FROM Participant p WHERE p.scheduleId = :scheduleId")
+    @Query("""
+       SELECT p.employeeId
+         FROM Participant p
+        WHERE p.scheduleId      = :scheduleId
+          
+       """)
     List<String> findParticipantListByScheduleId(@Param("scheduleId") String scheduleId);
-
-    /**
-     * 특정 일정의 모든 참여자 정보 조회
-     */
-    List<Participant> findByScheduleId(String scheduleId);
-
-    /**
-     * 특정 직원이 참여한 모든 일정 참여 정보 조회
-     */
-    List<Participant> findByEmployeeId(String employeeId);
-
-    /**
-     * 특정 일정의 특정 참여자 조회
-     */
-    Participant findByScheduleIdAndEmployeeId(String scheduleId, String employeeId);
 
     /**
      * 특정 일정의 참여자 수 조회
      */
     @Query("SELECT COUNT(p) FROM Participant p WHERE p.scheduleId = :scheduleId")
     Long countByScheduleId(@Param("scheduleId") String scheduleId);
-
-    /**
-     * 특정 직원이 특정 일정에 참여하고 있는지 확인
-     */
-    boolean existsByScheduleIdAndEmployeeId(String scheduleId, String employeeId);
 
     /**
      * 특정 일정의 모든 참여자 삭제 (일정 삭제 시 사용)
@@ -66,17 +51,5 @@ public interface ParticipantRepository extends JpaRepository<Participant, Long> 
     @Query("DELETE FROM Participant p WHERE p.scheduleId = :scheduleId")
     void deleteByScheduleId(@Param("scheduleId") String scheduleId);
 
-    /**
-     * 특정 참여자를 특정 일정에서 제거
-     */
-    @Modifying
-    @Transactional
-    void deleteByScheduleIdAndEmployeeId(String scheduleId, String employeeId);
 
-    /**
-     * 여러 참여자를 일괄 저장 (일정 등록 시 사용)
-     */
-    @Query("SELECT p FROM Participant p WHERE p.scheduleId = :scheduleId AND p.employeeId IN :employeeIds")
-    List<Participant> findByScheduleIdAndEmployeeIdIn(@Param("scheduleId") String scheduleId,
-                                                      @Param("employeeIds") List<String> employeeIds);
 }
