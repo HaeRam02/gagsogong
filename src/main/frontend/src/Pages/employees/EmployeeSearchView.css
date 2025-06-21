@@ -1,0 +1,104 @@
+.employee-search-container {
+    padding: 20px;
+    font-family: 'Malgun Gothic', sans-serif;
+}
+
+.employee-search-header {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 20px;
+}
+
+.employee-search-bar {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    background-color: #f9f9f9;
+    gap: 10px;
+}
+.employee-search-input {
+    padding: 8px;
+    margin: 0 8px;
+    min-width: 250px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    flex: 1;
+}
+
+.employee-search-button {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 4px;
+    background-color: #1c52f3;
+    
+    margin: 0 8px;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.employee-search-button:hover {
+    background-color: #1540d1;
+}
+
+.employee-search-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.employee-search-table th, 
+.employee-search-table td {
+    border-bottom: 1px solid #ddd;
+    padding: 12px;
+    text-align: center;
+}
+
+.employee-search-table th {
+    border-bottom-width: 2px;
+    border-bottom-color: #333;
+    background-color: #f2f2f2;
+    font-weight: bold;
+}
+
+.employee-search-link {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.employee-search-link:hover {
+    text-decoration: underline;
+}
+
+
+.no-data {
+    color: #666;
+    font-style: italic;
+    padding: 30px !important;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .employee-search-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .employee-search-input {
+        margin: 0;
+    }
+    
+    .employee-search-table {
+        font-size: 12px;
+    }
+    
+    .employee-search-table th,
+    .employee-search-table td {
+        padding: 8px 4px;
+    }
+}

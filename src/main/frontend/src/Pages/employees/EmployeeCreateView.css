@@ -1,0 +1,73 @@
+.employee-create-container {
+    padding: 30px;
+    max-width: 700px;
+    margin: 40px auto;
+    font-family: 'Malgun Gothic', sans-serif;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.employee-create-header {
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: 30px;
+    border-bottom: 2px solid #333;
+    padding-bottom: 15px;
+}
+
+.employee-create-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.employee-create-form label {
+    display: flex;
+    flex-direction: column;
+    font-weight: bold;
+    color: #333;
+}
+
+.employee-create-form input,
+.employee-create-form select {
+    margin-top: 8px;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+}
+
+.employee-create-form input:focus,
+.employee-create-form select:focus {
+    outline: none;
+    border-color: #1c52f3;
+    box-shadow: 0 0 5px rgba(28, 82, 243, 0.3);
+}
+
+.submit-button {
+    width: 100%;
+    padding: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #333;
+    background-color: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 20px;
+    transition: background-color 0.3s;
+}
+
+.submit-button:hover {
+    background-color: #e0e0e0;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .employee-create-container {
+        margin: 20px;
+        padding: 20px;
+    }
+}

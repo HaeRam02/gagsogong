@@ -8,7 +8,7 @@ const Header = () => {
       <header className="header">
         <h1 className="logo" onClick={()=>{nav('/')}}>지식 관리 시스템</h1>
         <nav className="nav">
-          <button className="nav-button" onClick={() => {nav('/user')}}>직원</button>
+          <button className="nav-button" onClick={() => {nav('/employee')}}>직원</button>
           <button className="nav-button" onClick={() => {nav('/document')}}>문서</button>
           <button className="nav-button" onClick={() => {nav('/schedule')}}>일정</button>
           <button className="nav-button" onClick={() => {nav('/task')}}>업무방</button>
