@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RegisterScheduleView from './RegisterScheduleView';
 import scheduleApiService from '../../Services/scheduleApiService';
+import ScheduleCalendarView from '../../Components/ScheduleCalendar';
+
 import './ScheduleMain.css';
 
 const ScheduleMain = () => {
@@ -188,6 +190,7 @@ const ScheduleMain = () => {
         </div>
       ) : (
         <div className="schedule-list">
+          <ScheduleCalendarView/>
           {schedules.length === 0 ? (
             <div className="empty-state">
               <p>등록된 일정이 없습니다.</p>
@@ -309,6 +312,10 @@ const ScheduleMain = () => {
       onBack={handleBackToList}
       onSubmit={handleScheduleSubmit}
     />
+  );
+
+   const rendereCalendarSchedule = () => (
+    <ScheduleCalendarView />
   );
 
   // 현재 뷰에 따라 렌더링

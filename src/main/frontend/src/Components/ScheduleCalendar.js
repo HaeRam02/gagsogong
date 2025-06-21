@@ -192,19 +192,7 @@ const ScheduleCalendar = () => {
 
   return (
     <div className="schedule-calendar">
-      {/* 헤더 */}
-      <div className="calendar-header">
-        <div className="header-title">
-          <Calendar className="header-icon" />
-          <h1 className="header-text">전체 일정 조회</h1>
-        </div>
-        
-        <button className="add-schedule-btn" onClick={() => alert('일정 등록 기능은 추후 구현 예정입니다.')}>
-          <Plus />
-          일정 등록
-        </button>
-      </div>
-
+      
       {/* 달력 네비게이션 */}
       <div className="calendar-navigation">
         <button
