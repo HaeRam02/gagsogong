@@ -50,7 +50,7 @@ public class DocumentService {
                 return "파일 업로드에 실패했습니다.";
             }
         }
-
+//        System.out.println(document.toString());
         documentRepository.save(document);
 
         return "";
@@ -73,8 +73,10 @@ public class DocumentService {
     private Document toEntity(DocumentDTO dto) {
         Document document = new Document();
         document.setTitle(dto.getTitle());
+        document.setWriterID(dto.getWriterID());
         document.setContent(dto.getContent());
         document.setVisibility(dto.getVisibility());
+        document.setDate(dto.getDate());
         return document;
     }
 
@@ -90,4 +92,10 @@ public class DocumentService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public DocumentDTO getDocumentById(String id) {
+        return documentRepository.findById(id)
+                .map(this::toListItemDTO)
+                .orElse(null);
+    }
 }

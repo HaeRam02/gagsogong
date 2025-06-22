@@ -43,5 +43,8 @@ public class Document {
         if (this.docID == null) {
             this.docID = java.util.UUID.randomUUID().toString();
         }
+        if (this.date == null) {
+            this.date = LocalDate.now();
+        }
     }
 }

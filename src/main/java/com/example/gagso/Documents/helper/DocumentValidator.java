@@ -20,7 +20,7 @@ public class DocumentValidator {
             return "제목은 필수 항목입니다.";
         }
 
-        if (dto.getContent() != null) {
+        if (dto.getContent() == null) {
             return "내용은 입력 필수 항목입니다.";
 
         }

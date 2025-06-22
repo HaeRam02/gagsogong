@@ -26,6 +26,7 @@ public class DocumentController {
 
         String msg = service.register(dto, file);
         if (!msg.isEmpty()) {
+            System.out.println("try doc register");
             return ResponseEntity.badRequest().body(msg);
         }
         return ResponseEntity.ok("업무가 등록되었습니다.");
@@ -40,7 +41,15 @@ public class DocumentController {
 //    public List<DocumentDTO> searchDocuments(@RequestParam("title") String title) {
 //        return service.search(title);
 //    }
-//
+
+    @GetMapping("/{id}")
+    public ResponseEntity<DocumentDTO> getDocumentById(@PathVariable("id") String id) {
+        DocumentDTO dto = service.getDocumentById(id);
+        if (dto == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(dto);
+    }
 //    @GetMapping("/open")
 //    public ResponseEntity<?> openCreateScreen(@RequestParam String deptId) {
 //        return ResponseEntity.ok("부서 ID 확인 완료: " + deptId);
