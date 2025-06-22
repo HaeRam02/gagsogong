@@ -22,9 +22,9 @@ public class DocumentController {
     @PostMapping(consumes = {MediaType.APPLICATION_JSON_VALUE, MediaType.MULTIPART_FORM_DATA_VALUE})
     public ResponseEntity<?> registerDocument(
             @RequestPart("documentDTO") DocumentDTO dto,
-            @RequestPart(value = "file", required = false) MultipartFile file) {
+            @RequestPart(value = "files", required = false)  List<MultipartFile>  files) {
 
-        String msg = service.register(dto, file);
+        String msg = service.register(dto, files);
         if (!msg.isEmpty()) {
             System.out.println("try doc register");
             return ResponseEntity.badRequest().body(msg);

@@ -16,6 +16,7 @@ export default function DocumentDetailView() {
         .then((res) => {
           setDoc(res.data);
           setLoading(false);
+          console.log("문서 조회 성공:", res.data);
         })
         .catch((err) => {
           console.error("문서 조회 실패:", err);
@@ -81,20 +82,22 @@ export default function DocumentDetailView() {
           {doc.content}
         </div>
 
-        {doc.attachment && (
-          <div style={{ marginTop: "20px" }}>
+        {doc.attachments && doc.attachments.length > 0 && (
+          <div style={{ marginTop: 20 }}>
             <strong>첨부파일:</strong>
-            <a
-              href={`/uploads/${doc.attachment}`}
-              download
-              style={{
-                marginLeft: "8px",
-                color: "#007bff",
-                textDecoration: "none",
-              }}
-            >
-              {doc.attachment}
-            </a>
+            <ul style={{ listStyle: "none", padding: 0, marginTop: 8 }}>
+              {doc.attachments.map((att, idx) => (
+                <li key={idx}>
+                  <a
+                    href={att.path}
+                    download
+                    style={{ color: "#007bff", textDecoration: "none" }}
+                  >
+                    {att.originalName}
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>

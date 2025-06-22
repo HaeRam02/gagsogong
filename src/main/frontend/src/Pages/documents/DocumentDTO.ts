@@ -5,4 +5,12 @@ export interface DocumentDTO {
   title: string;
   visibility: string;
   date: Date;
+  attachments: AttachmentDTO[];
+}
+
+export interface AttachmentDTO {
+  id: number;
+  originalName: string;
+  path: string;
+  size: number;
 }

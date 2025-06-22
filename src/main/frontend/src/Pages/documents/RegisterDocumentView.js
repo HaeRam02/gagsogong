@@ -26,31 +26,6 @@ export default function RegisterDocumentView({ onRegister }) {
   });
   const [employees, setEmployees] = useState([]);
 
-  // useEffect(() => {
-  //   const fetchEmployees = async () => {
-  //     // =================================================================
-  //     // TODO: 추후 EmployeeProvider API가 구현되면 아래 코드로 교체
-  //     // try {
-  //     //     // 로그인한 사용자의 부서 ID를 사용해 해당 부서의 직원만 조회
-  //     //     const response = await axios.get(`/api/employees?deptId=${loggedInUser.deptId}`);
-  //     //     setEmployees(response.data);
-  //     // } catch (error) {
-  //     //     console.error("담당자 목록 조회 실패:", error);
-  //     // }
-  //     // =================================================================
-
-  //     // 현재는 구현 전이므로, 가상의 데이터로 설정
-  //     const dummyEmployees = [
-  //       { employeeId: "EMP_001", name: "김철수" },
-  //       { employeeId: "EMP_002", name: "이영희" },
-  //       { employeeId: "EMP_003", name: "박민준" },
-  //     ];
-  //     setEmployees(dummyEmployees);
-  //   };
-
-  //   fetchEmployees();
-  // }, []); // 나중에 실제 API를 사용하게 되면 [loggedInUser.deptId]로 변경하여 부서 ID가 바뀔 때마다 새로고침되게 할 수 있습니다.
-
   const handleFileChange = (e) => {
     setFiles(Array.from(e.target.files));
   };
@@ -73,18 +48,42 @@ export default function RegisterDocumentView({ onRegister }) {
       })
     );
     console.log("업로드 데이터:", documentDtoPayload);
-    if (files) {
-      uploadData.append("file", files);
+    // 파일이 있을 때만 추가
+    if (files && files.length > 0) {
+      console.log("첨부된 파일들:", files);
+      files.forEach((file) => {
+        uploadData.append("files", file); // 각 파일을 같은 이름으로 추가
+      });
     }
+
     try {
-      const res = await axios.post("/api/documents", uploadData);
+      const res = await axios.post("/api/documents", uploadData, {});
       alert("✅ " + res.data);
       nav("/document");
     } catch (err) {
-      const message =
-        typeof err.response.data === "string"
-          ? err.response.data
-          : err.response.data.message || JSON.stringify(err.response.data);
+      console.error("전체 에러 객체:", err);
+      console.error("에러 응답:", err.response);
+      console.error("에러 요청:", err.request);
+
+      let message = "등록에 실패했습니다.";
+
+      if (err.response) {
+        console.log("응답 상태:", err.response.status);
+        console.log("응답 데이터:", err.response.data);
+
+        if (typeof err.response.data === "string") {
+          message = err.response.data;
+        } else if (err.response.data && err.response.data.message) {
+          message = err.response.data.message;
+        } else {
+          message = `서버 오류: ${err.response.status}`;
+        }
+      } else if (err.request) {
+        message = "서버에 연결할 수 없습니다.";
+      } else {
+        message = err.message || "알 수 없는 오류가 발생했습니다.";
+      }
+
       alert("❌ 등록 실패: " + message);
     }
   };

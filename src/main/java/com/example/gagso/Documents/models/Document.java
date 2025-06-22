@@ -28,9 +28,6 @@ public class Document {
     @Column(name = "content", length = 2000, nullable = false)
     private String content;
 
-    @Column(name = "attachment", length = 1000, nullable = true)
-    private String attachment;
-
     @Column(name = "visibility", nullable = false)
     private String visibility;
 

@@ -1,5 +1,6 @@
 package com.example.gagso.Documents.dto;
 
+import com.example.gagso.Documents.models.Attachment;
 import jakarta.persistence.Column;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -8,6 +9,7 @@ import lombok.Setter;
 
 import java.beans.Visibility;
 import java.time.LocalDate;
+import java.util.List;
 
 @Getter
 @Setter
@@ -20,5 +22,5 @@ public class DocumentDTO {
     private String content;
     private String visibility;
     private LocalDate date;
-    private String attachment;
+    private List<AttachmentDTO> attachments;
 }
