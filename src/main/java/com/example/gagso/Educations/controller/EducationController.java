@@ -3,6 +3,7 @@ package com.example.gagso.Educations.controller;
 import com.example.gagso.Educations.models.Education;
 import com.example.gagso.Educations.service.EducationService;
 import com.example.gagso.Educations.dto.EducationDto;
+import com.example.gagso.Log.service.EducationLogWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +16,7 @@ import org.springframework.http.ResponseEntity;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import org.springframework.http.MediaType;
-
+import com.example.gagso.Log.model.ActionType;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.Files;
@@ -28,10 +29,13 @@ import java.util.UUID;
 public class EducationController {
 
     private final EducationService service;
+    private final EducationLogWriter educationLogWriter; // EducationLogWriter 필드 추가
 
     @Autowired
-    public EducationController(EducationService service) {
+    public EducationController(EducationService service, EducationLogWriter educationLogWriter) {
         this.service = service;
+        this.educationLogWriter = educationLogWriter;
+
     }
 
     @GetMapping
@@ -46,7 +50,7 @@ public class EducationController {
     }
 
     @PostMapping
-    public ResponseEntity<?> uploadEducation(
+    public ResponseEntity<Education> uploadEducation(
             @RequestPart("education") EducationDto dto,
             @RequestPart(value = "file", required = false) MultipartFile file
     ) {
@@ -78,12 +82,13 @@ public class EducationController {
                 dto.setAttachment_path(savedFileName);  // ✅ DB에 저장되는 파일명
             }
 
-            service.create(dto); // DB 저장
-
-            return ResponseEntity.ok("등록 성공");
+            Education createdEducation = service.create(dto);
+            String actorId = "ADMIN_001";
+            educationLogWriter.save(actorId, ActionType.REGISTER, createdEducation);
+            return ResponseEntity.ok(createdEducation); // ⭐ 반환 구문 변경
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(500).body("등록 실패");
+            return ResponseEntity.status(500).build();
         }
     }
 

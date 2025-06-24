@@ -1,17 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import './TaskCreateView.css';
 import { useNavigate } from 'react-router-dom';
-
+import { UserContext } from '../../Context/UserContext';
 function TaskCreateView() {
     const nav = useNavigate();
+    const {loggedInUser} = useContext(UserContext);
 
-    // '로그인 되어 있다'고 가정한 가상의 사용자 정보
-    const loggedInUser = {
-        id: 'EMP_007',       // 로그인한 사용자의 ID
-        name: '홍길동',      // 로그인한 사용자의 이름
-        deptId: 'D101'       // 로그인한 사용자의 부서 ID
-    };
 
     const [formData, setFormData] = useState({
         title: '',
@@ -28,30 +23,25 @@ function TaskCreateView() {
     const [employees, setEmployees] = useState([]);
     const [selectedFile, setSelectedFile] = useState(null);
 
-    useEffect(() => {
-        const fetchEmployees = async () => {
-            // =================================================================
-            // TODO: 추후 EmployeeProvider API가 구현되면 아래 코드로 교체
-            // try {
-            //     // 로그인한 사용자의 부서 ID를 사용해 해당 부서의 직원만 조회
-            //     const response = await axios.get(`/api/employees?deptId=${loggedInUser.deptId}`);
-            //     setEmployees(response.data);
-            // } catch (error) {
-            //     console.error("담당자 목록 조회 실패:", error);
-            // }
-            // =================================================================
+   useEffect(() => {
+    const fetchEmployees = async () => {
+        try {
+            const response = await axios.get(`/api/tasks/open?deptId=${loggedInUser.deptId}`);
+            const employeeList = response.data.employees; // 서버에서 "employees" 키로 전달된 리스트
 
-            // 현재는 구현 전이므로, 가상의 데이터로 설정
-            const dummyEmployees = [
-                { employeeId: 'EMP_001', name: '김철수' },
-                { employeeId: 'EMP_002', name: '이영희' },
-                { employeeId: 'EMP_003', name: '박민준' },
-            ];
-            setEmployees(dummyEmployees);
-        };
+            if (!Array.isArray(employeeList)) {
+                throw new Error("직원 목록 형식이 올바르지 않습니다.");
+            }
 
-        fetchEmployees();
-    }, []); // 나중에 실제 API를 사용하게 되면 [loggedInUser.deptId]로 변경하여 부서 ID가 바뀔 때마다 새로고침되게 할 수 있습니다.
+            setEmployees(employeeList);
+        } catch (error) {
+            console.error("담당자 목록 조회 실패:", error);
+            alert("직원 정보를 불러오지 못했습니다.");
+        }
+    };
+
+    fetchEmployees();
+}, [loggedInUser.deptId]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -78,10 +68,11 @@ function TaskCreateView() {
             alarmEnabled: formData.notification === 'on',
             managerId: formData.assignee,
             managerName: managerName,
-            deptId: loggedInUser.deptId, // DUMMY_DEPT_ID 대신 로그인한 사용자의 부서 ID 사용
+            deptId: loggedInUser.deptId, 
             unitTask: formData.unitTask,
             publicStartDate: formData.visibility === 'public' ? formData.publicStartDate : null,
             publicEndDate: formData.visibility === 'public' ? formData.publicEndDate : null,
+            creatorId: loggedInUser.id,
         };
 
         uploadData.append('taskDto', new Blob([JSON.stringify(taskDtoPayload)], { type: "application/json" }));

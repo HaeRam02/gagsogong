@@ -32,7 +32,7 @@ public class EducationService {
     }
 
     @Transactional
-    public void create(EducationDto dto) {
+    public Education create(EducationDto dto) {
         Education edu = new Education();
         edu.setEducationId(UUID.randomUUID().toString());
         edu.setTitle(dto.getTitle());
@@ -45,6 +45,6 @@ public class EducationService {
         edu.setAttachmentType(dto.getAttachment_type());
         edu.setAttachmentPath(dto.getAttachment_path());
 
-        repository.saveAndFlush(edu);
+        return repository.saveAndFlush(edu);
     }
 }

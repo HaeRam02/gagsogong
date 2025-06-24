@@ -9,20 +9,14 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
-/**
- * 일정 등록 요청에서 입력된 정보들을 검증하는 유효성 검사 클래스
- * 설계 명세: DCD3011
- */
+
 @Component
 public class ScheduleValidator {
 
     private static final int MAX_TITLE_LENGTH = 20;
     private static final int MAX_DESCRIPTION_LENGTH = 200;
 
-    /**
-     * 외부에서 호출하는 단일 진입점이고 내부 각 항목 검사를 실행한 후 결과를 반환
-     * 설계 명세: validate
-     */
+
     public ScheduleRegistrationResult validate(ScheduleRegisterRequestDTO reqSchedule) {
         ValidationResult result = ValidationResult.ofSuccess();
 
@@ -44,10 +38,7 @@ public class ScheduleValidator {
         }
     }
 
-    /**
-     * 제목이 null 또는 공백인지, 길이를 초과했는지 검사
-     * 설계 명세: checkTitle
-     */
+
     private void checkTitle(ScheduleRegisterRequestDTO reqSchedule, ValidationResult result) {
         String title = reqSchedule.getTitle();
 
@@ -61,9 +52,7 @@ public class ScheduleValidator {
         }
     }
 
-    /**
-     * 설명이 길이를 초과했는지 검사
-     */
+
     private void checkDescription(ScheduleRegisterRequestDTO reqSchedule, ValidationResult result) {
         String description = reqSchedule.getDescription();
 
@@ -72,10 +61,7 @@ public class ScheduleValidator {
         }
     }
 
-    /**
-     * 시작일이 종료일보다 이후인지 여부, 형식 유효성 검사
-     * 설계 명세: checkStartEndTime
-     */
+
     private void checkStartEndTime(ScheduleRegisterRequestDTO reqSchedule, ValidationResult result) {
         // ✅ 수정: startDate, endDate getter 사용
         LocalDateTime startDateTime = reqSchedule.getStartDate();
@@ -111,10 +97,6 @@ public class ScheduleValidator {
         }
     }
 
-    /**
-     * 공개 범위가 null인지 검사
-     * 설계 명세: checkVisibility
-     */
     private void checkVisibility(ScheduleRegisterRequestDTO reqSchedule, ValidationResult result) {
         Visibility visibility = reqSchedule.getVisibility();
 
@@ -123,10 +105,7 @@ public class ScheduleValidator {
         }
     }
 
-    /**
-     * 그룹 공개일 경우, 참여자가 1명 이상 존재하는지 검사
-     * 설계 명세: checkParticipants
-     */
+
     private void checkParticipants(ScheduleRegisterRequestDTO reqSchedule, ValidationResult result) {
         Visibility visibility = reqSchedule.getVisibility();
 
@@ -137,10 +116,7 @@ public class ScheduleValidator {
         }
     }
 
-    /**
-     * 알림이 true일 경우, 알림 시간이 입력되었는지 검사
-     * 설계 명세: checkAlarmSettings
-     */
+
     private void checkAlarmSettings(ScheduleRegisterRequestDTO reqSchedule, ValidationResult result) {
         Boolean alarmEnabled = reqSchedule.getAlarmEnabled();
         LocalDateTime alarmTime = reqSchedule.getAlarmTime();

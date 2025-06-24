@@ -10,7 +10,7 @@ const dummyUsers = {
   employee: {
     id: 'EMP_007',
     name: '홍길동',
-    deptId: 'D101',
+    deptId: 'DEV001',
     role: 'EMPLOYEE'
   }
 };

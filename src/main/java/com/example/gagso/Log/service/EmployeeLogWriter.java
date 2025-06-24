@@ -1,5 +1,6 @@
 package com.example.gagso.Log.service;
 
+import com.example.gagso.Employees.models.Employee; // Employee 엔티티 임포트
 import com.example.gagso.Log.model.ActionType;
 import com.example.gagso.Log.model.LogEntry;
 import com.example.gagso.Log.repository.LogRepository;
@@ -13,27 +14,23 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class EmployeeLogWriter implements LogWriter</*Employee*/Object> {
+public class EmployeeLogWriter implements LogWriter<Employee> { // 제네릭 타입을 Employee로 변경
 
     private final LogRepository logRepository;
 
     @Override
-    public void save(String actor, ActionType action, /*Employee*/ Object target) {
+    public void save(String actor, ActionType action, Employee target) { // target 타입을 Employee로 변경
         LogEntry entry = new LogEntry();
         entry.setId(UUID.randomUUID());
         entry.setActorId(actor);
         entry.setActionType(action);
 
-        // ===== TODO: 실제 Employee 엔티티 연결 후 주석 해제 =====
-        // entry.setTargetId(((Employee) target).getEmployeeId());
-        // entry.setTargetType(target.getClass().getSimpleName());
-
-        // ===== 임시 대체 (서브시스템 구축 전까지) =====
-        entry.setTargetId("TEMP_EMPLOYEE_ID");
-        entry.setTargetType("Employee");
-        // ======================================================
+        // Employee 엔티티의 실제 ID와 타입을 설정합니다.
+        entry.setTargetId(target.getEmployeeId()); // Employee 클래스의 getEmployeeId() 메서드 사용
+        entry.setTargetType("Employee");           // 대상 엔티티의 타입을 "Employee"로 설정
 
         entry.setTimeStamp(LocalDateTime.now());
+
         logRepository.save(entry);
     }
 

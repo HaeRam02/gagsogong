@@ -20,7 +20,6 @@ const EduMain = () => {
     }
   };
 
-  console.log("EduMain 진입 시점 유저:", loggedInUser);
 
 
 
@@ -59,39 +58,56 @@ const EduMain = () => {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const formData = new FormData();
-    const education = {
-      title: form.title,
-      instructor: form.instructor,
-      educationType: form.educationType,
-      applicationPeriodStart: form.applicationPeriodStart,
-      applicationPeriodEnd: form.applicationPeriodEnd,
-      educationPeriodStart: form.educationPeriodStart,
-      educationPeriodEnd: form.educationPeriodEnd,
-      attachmentType: form.attachmentType,
-      attachmentPath: form.attachmentPath,
-    };
+ const handleSubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData();
+    const education = {
+      title: form.title,
+      instructor: form.instructor,
+      educationType: form.educationType,
+      applicationPeriodStart: form.applicationPeriodStart,
+      applicationPeriodEnd: form.applicationPeriodEnd,
+      educationPeriodStart: form.educationPeriodStart,
+      educationPeriodEnd: form.educationPeriodEnd,
+      attachmentType: form.attachmentType,
+      attachmentPath: form.attachmentPath,
+    };
 
-    formData.append("education", new Blob([JSON.stringify(education)], { type: "application/json" }));
-    if (form.attachmentType === "파일" && form.attachmentFile) {
-      formData.append("file", form.attachmentFile);
-    }
+    formData.append("education", new Blob([JSON.stringify(education)], { type: "application/json" }));
+    if (form.attachmentType === "파일" && form.attachmentFile) {
+      formData.append("file", form.attachmentFile);
+    }
 
-    try {
-      await axios.post("/api/educations", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+    try {
+      // ⭐ 백엔드 응답을 'res' 변수에 저장합니다.
+      const res = await axios.post("/api/educations", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      alert("교육정보 등록 완료");
+      setShowForm(false);
+
+      // ⭐ 백엔드에서 반환된 Education 객체 (res.data)를 사용하여 상태를 업데이트합니다.
+      setEducations(prevEducations => [...prevEducations, res.data]);
+      setFilteredEducations(prevFilteredEducations => [...prevFilteredEducations, res.data]);
+      setCurrentPage(1); // 새로 추가된 항목이 첫 페이지에 보이도록
+      setForm({ // 폼 초기화
+          title: "",
+          instructor: "",
+          educationType: "온라인",
+          applicationPeriodStart: "",
+          applicationPeriodEnd: "",
+          educationPeriodStart: "",
+          educationPeriodEnd: "",
+          attachmentType: "파일",
+          attachmentPath: "",
+          attachmentFile: null,
       });
-      alert("교육정보 등록 완료");
-      setEducations([...educations, education]);
-      setFilteredEducations([...educations, education]);
-      setShowForm(false);
-    } catch (err) {
-      console.error("등록 오류", err);
-      alert("등록 실패");
-    }
-  };
+
+    } catch (err) {
+      console.error("등록 오류", err.response ? err.response.data : err.message); // 상세 에러 로깅
+      alert("등록 실패: " + (err.response ? err.response.data.message || err.response.statusText : err.message));
+    }
+  };
 
   const getRecruitStatus = (startStr, endStr) => {
     const today = new Date();

@@ -1,9 +1,9 @@
-// src/main/frontend/src/Pages/schedules/ScheduleMain.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react'; // useContext 임포트
 import { useNavigate } from 'react-router-dom';
 import RegisterScheduleView from './RegisterScheduleView';
 import scheduleApiService from '../../Services/scheduleApiService';
 import ScheduleCalendarView from '../../Components/ScheduleCalendar';
+import { UserContext } from '../../Context/UserContext'; // UserContext 임포트
 
 import './ScheduleMain.css';
 
@@ -15,18 +15,20 @@ const ScheduleMain = () => {
   const [currentView, setCurrentView] = useState('list'); // 'list', 'create', 'detail'
   const [selectedSchedule, setSelectedSchedule] = useState(null);
 
+  const { loggedInUser } = useContext(UserContext); // UserContext에서 로그인 정보 가져오기
+
   useEffect(() => {
-    // 컴포넌트 마운트 시 일정 목록 로드
     loadSchedules();
   }, []);
 
   const loadSchedules = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
-      const data = await scheduleApiService.getSchedules();
-      setSchedules(data || []); // 🔧 안전한 기본값 설정
+      // 🔧 loggedInUser.employeeId를 getSchedules에 전달
+      const data = await scheduleApiService.getSchedules(loggedInUser.id);
+      setSchedules(data || []);
     } catch (error) {
       console.error('일정 목록 로드 실패:', error);
       setError(error.message);
@@ -41,14 +43,13 @@ const ScheduleMain = () => {
 
   const handleViewSchedule = async (schedule) => {
     try {
-      // 상세 정보가 필요한 경우 API 호출
-      const detailSchedule = await scheduleApiService.getScheduleById(schedule.scheduleId);
+      // 🔧 loggedInUser.employeeId를 getScheduleById에 전달
+      const detailSchedule = await scheduleApiService.getScheduleById(schedule.scheduleId, loggedInUser.id);
       setSelectedSchedule(detailSchedule);
       setCurrentView('detail');
     } catch (error) {
       console.error('일정 상세 조회 실패:', error);
       setError(error.message);
-      // 에러가 발생해도 기본 정보로 상세보기는 가능하게
       setSelectedSchedule(schedule);
       setCurrentView('detail');
     }
@@ -60,71 +61,65 @@ const ScheduleMain = () => {
     setError(null);
   };
 
-  // 🔧 수정: 데이터 검증 및 로깅 강화
-  const handleScheduleSubmit = async ({submitData}) => {
+  const handleScheduleSubmit = async ({ submitData }) => {
     try {
       setLoading(true);
-      
-      // 🔧 수정: 전달받은 데이터 구조 검증 및 로깅
+
       console.log('handleScheduleSubmit - 전달받은 원본 데이터:', submitData);
-      
-      // 데이터 유효성 사전 검사
+    console.log('handleScheduleSubmit - UserContext loggedInUser:', loggedInUser);
+            console.log('handleScheduleSubmit - UserContext ID:', loggedInUser?.id);
+
       if (!submitData) {
         throw new Error('일정 데이터가 제공되지 않았습니다.');
       }
-      
+
       if (!submitData.title || !submitData.title.trim()) {
         throw new Error('일정 제목은 필수입니다.');
       }
-      
+
       if (!submitData.startDate || !submitData.endDate) {
         throw new Error('시작 날짜와 종료 날짜는 필수입니다.');
       }
 
-      // 🔧 수정: 데이터 정규화 (필요시 기본값 설정)
       const normalizedScheduleData = {
         title: submitData.title,
         description: submitData.description || '',
         startDate: submitData.startDate,
         endDate: submitData.endDate,
-        visibility: submitData.visibility || 'PUBLIC', // 기본값 명시적 설정
+        visibility: submitData.visibility || 'PUBLIC',
         isAlarmEnabled: Boolean(submitData.isAlarmEnabled),
         alarmTime: submitData.alarmTime || null,
         selectedParticipants: submitData.selectedParticipants || []
       };
 
       console.log('handleScheduleSubmit - 정규화된 데이터:', normalizedScheduleData);
-      
-      // API를 통해 일정 등록
-      const result = await scheduleApiService.registerSchedule(normalizedScheduleData);
-      
+
+      // 🔧 loggedInUser.employeeId를 registerSchedule에 전달
+      const result = await scheduleApiService.registerSchedule(normalizedScheduleData, loggedInUser.id);
+
       console.log('handleScheduleSubmit - API 응답:', result);
-      
-      if (result.success !== false) { // 등록 성공
-        // 목록 새로고침
+
+      if (result.success !== false) {
         await loadSchedules();
         setCurrentView('list');
         alert('일정이 성공적으로 등록되었습니다!');
       } else {
-        // 백엔드에서 유효성 검사 실패 등으로 실패한 경우
         throw new Error(result.message || '일정 등록에 실패했습니다.');
       }
-      
+
     } catch (error) {
       console.error('handleScheduleSubmit - 일정 등록 실패:', error);
-      
-      // 🔧 수정: 더 자세한 에러 메시지 제공
+
       let errorMessage = '일정 등록 중 오류가 발생했습니다.';
-      
+
       if (error.message) {
         errorMessage = error.message;
       }
-      
-      // 유효성 검사 에러의 경우 더 자세한 정보 제공
+
       if (error.message && error.message.includes('visibility')) {
         errorMessage += '\n공개 범위 설정에 문제가 있습니다. 다시 시도해주세요.';
       }
-      
+
       setError(errorMessage);
       alert(errorMessage);
     } finally {
@@ -132,14 +127,13 @@ const ScheduleMain = () => {
     }
   };
 
-  // 🔧 기존 헬퍼 함수들은 그대로 유지
   const formatDateTime = (dateTime) => {
     if (!dateTime) return '-';
-    
+
     try {
       const date = new Date(dateTime);
       if (isNaN(date.getTime())) return '-';
-      
+
       return date.toLocaleString('ko-KR', {
         year: 'numeric',
         month: '2-digit',
@@ -155,43 +149,42 @@ const ScheduleMain = () => {
   };
 
   const getVisibilityText = (visibility) => {
-    switch(visibility) {
+    switch (visibility) {
       case 'PUBLIC': return '전체 공개';
-      case 'GROUP': 
+      case 'GROUP':
       case 'DEPARTMENT': return '그룹 공개';
       case 'PRIVATE': return '비공개';
       default: return '알 수 없음';
     }
   };
 
-    const renderParticipants = (schedule) => {
+  const renderParticipants = (schedule) => {
     console.log('🔍 renderParticipants 호출:', schedule.participants);
-    
-    // 참여자 데이터가 없는 경우
+
     if (!schedule.participants || schedule.participants.length === 0) {
       return '참여자 없음';
     }
-    
+
     if (schedule.participants.length === 1) {
       return schedule.participants[0];
     }
-    
+
     return `${schedule.participants[0]} 외 ${schedule.participants.length - 1}명`;
   };
 
   const renderDetailParticipants = (schedule) => {
     console.log('🔍 renderDetailParticipants 호출:', schedule.participants, schedule.participantIds);
-    
+
     if (!schedule.participants || schedule.participants.length === 0) {
       return <div className="no-participants">참여자가 없습니다.</div>;
     }
-    
-    
+
+
     return (
       <div className="participants-grid">
         {schedule.participants.map((participantName, index) => {
           const participantId = schedule.participantIds?.[index] || `unknown-${index}`;
-          
+
           return (
             <div key={participantId} className="participant-item">
               <span className="participant-name">
@@ -207,14 +200,13 @@ const ScheduleMain = () => {
     );
   };
 
-  // 일정 목록 뷰
   const renderScheduleList = () => (
     <div className="schedule-main">
       <div className="schedule-header">
         <h1>일정 관리</h1>
         <div className="header-actions">
-          <button 
-            className="btn-primary" 
+          <button
+            className="btn-primary"
             onClick={handleCreateSchedule}
           >
             + 새 일정
@@ -236,8 +228,8 @@ const ScheduleMain = () => {
           {schedules.length === 0 ? (
             <div className="empty-state">
               <p>등록된 일정이 없습니다.</p>
-              <button 
-                className="btn-primary" 
+              <button
+                className="btn-primary"
                 onClick={handleCreateSchedule}
               >
                 첫 번째 일정 만들기
@@ -247,8 +239,8 @@ const ScheduleMain = () => {
             <div className="schedule-list">
               <ScheduleCalendarView />
               {schedules.map((schedule) => (
-                <div 
-                  key={schedule.scheduleId} 
+                <div
+                  key={schedule.scheduleId}
                   className="schedule-item"
                   onClick={() => handleViewSchedule(schedule)}
                 >
@@ -258,22 +250,21 @@ const ScheduleMain = () => {
                       {getVisibilityText(schedule.visibility)}
                     </span>
                   </div>
-                  
+
                   <div className="schedule-item-content">
                     <p className="schedule-description">
                       {schedule.description || '설명 없음'}
                     </p>
-                    
+
                     <div className="schedule-time">
                       {formatDateTime(schedule.startDate)} ~ {formatDateTime(schedule.endDate)}
                     </div>
                   </div>
-                  
-                  {/* 🔧 안전한 참여자 표시 */}
+
                   <div className="schedule-participants">
                     <strong>참여자:</strong> {renderParticipants(schedule)}
                   </div>
-                  
+
                   {schedule.alarmEnabled && (
                     <div className="alarm-indicator">
                       🔔 알람 설정됨
@@ -288,11 +279,10 @@ const ScheduleMain = () => {
     </div>
   );
 
-  // 일정 상세 뷰
   const renderScheduleDetail = () => (
     <div className="schedule-detail-container">
       <div className="detail-header">
-        <button 
+        <button
           className="back-btn"
           onClick={handleBackToList}
         >
@@ -346,11 +336,11 @@ const ScheduleMain = () => {
     </div>
   );
 
-  // 일정 등록 뷰
   const renderCreateSchedule = () => (
-    <RegisterScheduleView 
+    <RegisterScheduleView
       onBack={handleBackToList}
       onSubmit={handleScheduleSubmit}
+      currentUser={loggedInUser} // 🔧 currentUser 정보 전달
     />
   );
 
@@ -358,8 +348,7 @@ const ScheduleMain = () => {
     <ScheduleCalendarView />
   );
 
-  // 현재 뷰에 따라 렌더링
-  switch(currentView) {
+  switch (currentView) {
     case 'create':
       return renderCreateSchedule();
     case 'detail':

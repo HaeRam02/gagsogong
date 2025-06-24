@@ -1,8 +1,8 @@
-// src/main/frontend/src/Components/ScheduleCalendar.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { Calendar, ChevronLeft, ChevronRight, Plus, Eye, Users, Lock } from 'lucide-react';
 import scheduleApiService from '../Services/scheduleApiService';
+import { UserContext } from '../Context/UserContext'; // UserContext 임포트 추가
 import './ScheduleCalendar.css';
 
 const ScheduleCalendar = () => {
@@ -12,14 +12,16 @@ const ScheduleCalendar = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  const { loggedInUser } = useContext(UserContext); // 로그인 정보 가져오기
+
   // 현재 월의 첫 번째와 마지막 날짜 계산
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-  
+
   // 달력 표시를 위한 시작일 (이전 달의 마지막 주 포함)
   const calendarStart = new Date(firstDayOfMonth);
   calendarStart.setDate(calendarStart.getDate() - firstDayOfMonth.getDay());
-  
+
   // 달력 표시를 위한 종료일 (다음 달의 첫 주 포함)
   const calendarEnd = new Date(lastDayOfMonth);
   calendarEnd.setDate(calendarEnd.getDate() + (6 - lastDayOfMonth.getDay()));
@@ -27,25 +29,25 @@ const ScheduleCalendar = () => {
   // 일정 로드
   useEffect(() => {
     loadSchedules();
-  }, [currentDate]);
+  }, [currentDate, loggedInUser.employeeId]); // employeeId 변경 시에도 다시 로드
 
   const loadSchedules = async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth() + 1;
-      
-      // 실제 API 호출로 월별 일정 조회
-      const data = await scheduleApiService.getMonthlySchedules(year, month);
+
+      // 🔧 scheduleApiService에 loggedInUser.employeeId 전달
+      const data = await scheduleApiService.getMonthlySchedules(year, month, loggedInUser.employeeId);
 
       setSchedules(data);
-      
+
     } catch (error) {
       console.error('일정 로드 실패:', error);
       setError(error.message);
-      
+
       // 에러 발생 시 빈 배열로 설정
       setSchedules([]);
     } finally {
@@ -54,46 +56,45 @@ const ScheduleCalendar = () => {
   };
 
   // 특정 날짜의 일정들 가져오기
- function getSchedulesForDate(schedules, targetDate) {
+  function getSchedulesForDate(schedules, targetDate) {
+    if (!Array.isArray(schedules)) {
+      return [];
+    }
+    return schedules.filter(schedule => {
+      // 1) 원본 날짜/시간 문자열 꺼내기
+      const rawStart = schedule.startDate;
+      const rawEnd = schedule.endDate;
+      if (!rawStart || !rawEnd) return false;
 
-  if (!Array.isArray(schedules)) {
-    return [];
+      // 2) Date 객체 생성
+      const start = new Date(rawStart);
+      const end = new Date(rawEnd);
+      if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
+
+      // 3) 시간 정보 제거하고 '날짜'만 비교
+      const startDay = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      const endDay = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+      const targetDay = new Date(
+        targetDate.getFullYear(),
+        targetDate.getMonth(),
+        targetDate.getDate()
+      );
+
+      // 4) 시작일부터 종료일까지 포함되는 경우만 true
+      return startDay <= targetDay && targetDay <= endDay;
+    });
   }
-  return schedules.filter(schedule => {
-    // 1) 원본 날짜/시간 문자열 꺼내기
-    const rawStart = schedule.startDate;
-    const rawEnd   = schedule.endDate; 
-    if (!rawStart || !rawEnd) return false;
-
-    // 2) Date 객체 생성
-    const start = new Date(rawStart);
-    const end   = new Date(rawEnd);
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) return false;
-
-    // 3) 시간 정보 제거하고 '날짜'만 비교
-    const startDay  = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-    const endDay    = new Date(end.getFullYear(),   end.getMonth(),   end.getDate());
-    const targetDay = new Date(
-      targetDate.getFullYear(),
-      targetDate.getMonth(),
-      targetDate.getDate()
-    );
-
-    // 4) 시작일부터 종료일까지 포함되는 경우만 true
-    return startDay <= targetDay && targetDay <= endDay;
-});
-}
 
   // 달력 날짜 배열 생성
   const generateCalendarDays = () => {
     const days = [];
     const current = new Date(calendarStart);
-    
+
     while (current <= calendarEnd) {
       days.push(new Date(current));
       current.setDate(current.getDate() + 1);
     }
-    
+
     return days;
   };
 
@@ -107,12 +108,12 @@ const ScheduleCalendar = () => {
   // 일정 상세 조회
   const handleScheduleClick = async (schedule) => {
     try {
-      // 접근 권한 확인
-      const hasAccess = await scheduleApiService.checkScheduleAccess(schedule.scheduleId);
-      
+      // 🔧 scheduleApiService에 loggedInUser.employeeId 전달
+      const hasAccess = await scheduleApiService.checkScheduleAccess(schedule.scheduleId, loggedInUser.employeeId);
+
       if (hasAccess) {
-        // 상세 정보 조회
-        const detailedSchedule = await scheduleApiService.getScheduleById(schedule.scheduleId);
+        // 🔧 scheduleApiService에 loggedInUser.employeeId 전달
+        const detailedSchedule = await scheduleApiService.getScheduleById(schedule.scheduleId, loggedInUser.employeeId);
         setSelectedSchedule(detailedSchedule);
       } else {
         alert('이 일정에 접근할 권한이 없습니다.');
@@ -126,11 +127,12 @@ const ScheduleCalendar = () => {
   // 공개범위 아이콘
   const getVisibilityIcon = (visibility) => {
     const iconClass = `visibility-icon ${visibility.toLowerCase()}`;
-    
+
     switch (visibility) {
       case 'PUBLIC':
         return <Eye className={iconClass} />;
       case 'GROUP':
+      case 'DEPARTMENT': // 백엔드에서 DEPARTMENT를 GROUP으로 처리할 수 있으므로 추가
         return <Users className={iconClass} />;
       case 'PRIVATE':
         return <Lock className={iconClass} />;
@@ -141,8 +143,10 @@ const ScheduleCalendar = () => {
 
   // 공개범위 CSS 클래스
   const getVisibilityClass = (visibility) => {
-    return visibility.toLowerCase();
+    // 백엔드에서 DEPARTMENT를 GROUP으로 처리할 수 있으므로 GROUP으로 통일
+    return (visibility === 'DEPARTMENT' ? 'group' : visibility.toLowerCase());
   };
+
 
   const formatDate = (date) => {
     return date.toLocaleDateString('ko-KR', {
@@ -152,6 +156,7 @@ const ScheduleCalendar = () => {
   };
 
   const formatTime = (dateTimeStr) => {
+    if (!dateTimeStr) return '';
     return new Date(dateTimeStr).toLocaleTimeString('ko-KR', {
       hour: '2-digit',
       minute: '2-digit',
@@ -160,6 +165,7 @@ const ScheduleCalendar = () => {
   };
 
   const formatDateTime = (dateTimeStr) => {
+    if (!dateTimeStr) return '';
     const date = new Date(dateTimeStr);
     return date.toLocaleDateString('ko-KR', {
       year: 'numeric',
@@ -172,11 +178,11 @@ const ScheduleCalendar = () => {
   const getDateCellClass = (date) => {
     const isCurrentMonth = date.getMonth() === currentDate.getMonth();
     const isToday = date.toDateString() === new Date().toDateString();
-    
+
     let cellClass = 'calendar-cell';
     if (!isCurrentMonth) cellClass += ' other-month';
     if (isToday) cellClass += ' today';
-    
+
     return cellClass;
   };
 
@@ -185,7 +191,7 @@ const ScheduleCalendar = () => {
     const isCurrentMonth = date.getMonth() === currentDate.getMonth();
     const isToday = date.toDateString() === new Date().toDateString();
     const dayOfWeek = date.getDay();
-    
+
     let numberClass = 'date-number';
     if (!isCurrentMonth) {
       numberClass += ' other-month';
@@ -198,7 +204,7 @@ const ScheduleCalendar = () => {
     } else {
       numberClass += ' default';
     }
-    
+
     return numberClass;
   };
 
@@ -216,7 +222,7 @@ const ScheduleCalendar = () => {
 
   return (
     <div className="schedule-calendar">
-      
+
       {/* 달력 네비게이션 */}
       <div className="calendar-navigation">
         <button
@@ -226,11 +232,11 @@ const ScheduleCalendar = () => {
         >
           <ChevronLeft />
         </button>
-        
+
         <h2 className="current-month">
           {formatDate(currentDate)}
         </h2>
-        
+
         <button
           onClick={() => navigateMonth(1)}
           className="nav-button"
@@ -251,7 +257,7 @@ const ScheduleCalendar = () => {
           color: '#b91c1c'
         }}>
           <p>일정을 불러오는 중 오류가 발생했습니다: {error}</p>
-          <button 
+          <button
             onClick={handleRefresh}
             style={{
               marginTop: '8px',
@@ -315,7 +321,8 @@ const ScheduleCalendar = () => {
                           <span className="schedule-title">{schedule.title}</span>
                         </div>
                         <div className="schedule-time">
-                          {formatTime(schedule.startDateTime)}
+                          {/* 백엔드 응답 필드명에 맞게 수정 */}
+                          {formatTime(schedule.startDate)}
                         </div>
                       </div>
                     ))}
@@ -355,14 +362,16 @@ const ScheduleCalendar = () => {
               <div className="modal-field">
                 <span className="modal-label">시작 시간:</span>
                 <p className="modal-value">
-                  {formatDateTime(selectedSchedule.startDateTime)}
+                  {/* 백엔드 응답 필드명에 맞게 수정 */}
+                  {formatDateTime(selectedSchedule.startDate)}
                 </p>
               </div>
 
               <div className="modal-field">
                 <span className="modal-label">종료 시간:</span>
                 <p className="modal-value">
-                  {formatDateTime(selectedSchedule.endDateTime)}
+                  {/* 백엔드 응답 필드명에 맞게 수정 */}
+                  {formatDateTime(selectedSchedule.endDate)}
                 </p>
               </div>
 
@@ -370,7 +379,7 @@ const ScheduleCalendar = () => {
                 <span className="modal-label">공개 범위:</span>
                 <p className="modal-value">
                   {selectedSchedule.visibility === 'PUBLIC' ? '전체 공개' :
-                   selectedSchedule.visibility === 'GROUP' ? '그룹 공개' : '비공개'}
+                    selectedSchedule.visibility === 'GROUP' || selectedSchedule.visibility === 'DEPARTMENT' ? '그룹 공개' : '비공개'}
                 </p>
               </div>
 
@@ -407,7 +416,7 @@ const ScheduleCalendar = () => {
               >
                 닫기
               </button>
-              <button 
+              <button
                 className="modal-btn primary"
                 onClick={() => alert('수정 기능은 추후 구현 예정입니다.')}
               >

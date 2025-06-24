@@ -3,8 +3,8 @@ package com.example.gagso.Schedules.service;
 import com.example.gagso.Alarm.dto.AlarmInfo;
 import com.example.gagso.Alarm.models.AlarmDomainType;
 import com.example.gagso.Alarm.service.AlarmService;
-import com.example.gagso.Employee.repository.EmployeeRepository;
-import com.example.gagso.Employee.models.Employee;
+import com.example.gagso.Employees.repository.EmployeeRepository;
+import com.example.gagso.Employees.models.Employee;
 import com.example.gagso.Schedules.dto.ScheduleRegisterRequestDTO;
 import com.example.gagso.Schedules.dto.ScheduleRegistrationResult;
 import com.example.gagso.Schedules.dto.ScheduleResponseDTO;
@@ -17,6 +17,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.gagso.Log.service.ScheduleLogWriter;
+import com.example.gagso.Log.model.ActionType;
+
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -25,17 +28,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/**
- * 일정 등록, 조회의 비즈니스 로직을 처리한다.
- * 저장소, 알림 예약, 유효성 검사, 로그 기록 등을 통합 조율한다.
- * 설계 명세: DCD3010 (알림 기능 통합 완료)
- *
- * 🔧 메소드 추적 결과:
- * - register() → convertToSchedule() → saveParticipants() → scheduleAlarmForSchedule() → writeLog()
- * - getAccessibleSchedules() → convertToScheduleResponseDTO() → getEmployeeName()
- * - getScheduleWithParticipants() → convertToScheduleResponseDTO()
- * - 에러 발생 지점: 참여자 조회, 알림 설정, DTO 변환 과정
- */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -46,37 +38,30 @@ public class ScheduleService {
     private final ScheduleValidator validator;
     private final EmployeeRepository employeeRepository;
     private final AlarmService alarmService;
+    private final ScheduleLogWriter scheduleLogWriter;
 
-    /**
-     * Repository 접근을 위한 Getter (ScheduleController에서 사용)
-     */
     public ScheduleRepository getScheduleRepository() {
         return scheduleRepository;
     }
 
-    /**
-     * 일정 등록, 유효성 검사, 로그 기록, 저장 요청, 알림 예약 요청,
-     * 일정 등록 결과를 반환하는 일정 등록 전체 흐름
-     * 설계 명세: register (알림 기능 완전 구현)
-     *
-     * 🔧 메소드 추적: register() → validator.validate() → convertToSchedule() →
-     *                scheduleRepository.save() → saveParticipants() → scheduleAlarmForSchedule() → writeLog()
-     */
+
     @Transactional
     public ScheduleRegistrationResult register(ScheduleRegisterRequestDTO scheduleDTO, String employeeId) {
         try {
-            // 1. 입력값 검증 (Null 체크 추가)
+
             if (scheduleDTO == null) {
                 log.error("일정 등록 요청 DTO가 null입니다");
                 return ScheduleRegistrationResult.failure("validation", "일정 정보가 제공되지 않았습니다.");
             }
 
             if (employeeId == null || employeeId.trim().isEmpty()) {
-                log.error("직원 ID가 null 또는 빈 값입니다");
-                return ScheduleRegistrationResult.failure("validation", "직원 ID가 필요합니다.");
+                log.error("직원 ID가 제공되지 않았습니다");
+                return ScheduleRegistrationResult.failure("validation", "직원 정보가 필요합니다.");
             }
 
-            // 2. 요청 DTO에 작성자 정보 설정
+            Employee employee = employeeRepository.findByEmployeeId(employeeId)
+                    .orElseThrow(() -> new IllegalArgumentException("직원을 찾을 수 없습니다: " + employeeId));
+
             scheduleDTO.setEmployeeId(employeeId);
             log.debug("일정 등록 요청: 직원 ID {}, 참여자 수 {}",
                     employeeId, scheduleDTO.getParticipantIds() != null ? scheduleDTO.getParticipantIds().size() : 0);
@@ -88,42 +73,38 @@ public class ScheduleService {
                 return validationResult;
             }
 
-            // 4. DTO를 엔티티로 변환
+
             Schedule schedule = convertToSchedule(scheduleDTO);
             if (schedule == null) {
                 log.error("일정 엔티티 변환 실패");
                 return ScheduleRegistrationResult.failure("conversion", "일정 정보 변환 중 오류가 발생했습니다.");
             }
 
-            // 5. 일정 저장
             Schedule savedSchedule = scheduleRepository.save(schedule);
             log.info("일정 저장 완료: {}", savedSchedule.getScheduleId());
 
             // 6. 참여자 저장 (에러 처리 강화)
-            try {
-                saveParticipants(savedSchedule.getScheduleId(), scheduleDTO.getParticipantIds());
-            } catch (Exception e) {
-                log.error("참여자 저장 중 오류 발생", e);
-                // 일정은 저장되었으므로 참여자 저장 실패만 알림
-                log.warn("일정은 등록되었으나 참여자 저장에 실패했습니다: {}", savedSchedule.getScheduleId());
+            if (scheduleDTO.getParticipants() != null && !scheduleDTO.getParticipants().isEmpty()) {
+                saveParticipants(savedSchedule, scheduleDTO.getParticipants());
             }
 
-            // 7. 알림 예약 (에러 처리 강화)
-            if (scheduleDTO.hasAlarm()) {
-                try {
-                    scheduleAlarmForSchedule(savedSchedule, scheduleDTO);
-                } catch (Exception e) {
-                    log.error("알림 설정 중 오류 발생", e);
-                    // 알림 실패는 치명적이지 않음
-                }
+            try {
+                scheduleAlarmForSchedule(savedSchedule, scheduleDTO, employee);
+            } catch (Exception alarmException) {
+                System.out.println("((((((((((((((((((((((((((((((((((");
+                log.warn("알람 설정 실패 (일정 등록은 성공): 일정 ID {}", savedSchedule.getScheduleId(), alarmException);
             }
 
             // 8. 로그 기록 (에러 처리 강화)
+
+            // 8. 로그 기록
             try {
-                writeLog(employeeId, savedSchedule);
-            } catch (Exception e) {
-                log.error("로그 기록 중 오류 발생", e);
-                // 로그 실패는 치명적이지 않음
+                // scheduleLogWriter 필드가 주입되어야 합니다. (아래 참고)
+                scheduleLogWriter.save(employeeId, ActionType.REGISTER, savedSchedule);
+                log.info("일정 등록 로그 기록 완료: 일정 ID {}", savedSchedule.getScheduleId());
+            } catch (Exception logException) {
+                log.error("일정 등록 로그 기록 중 오류 발생: 일정 ID {}", savedSchedule.getScheduleId(), logException);
+                // 로그 기록 실패는 일정 등록 실패로 이어지지 않으므로 예외를 다시 throw하지 않습니다.
             }
 
             return ScheduleRegistrationResult.success(savedSchedule);
@@ -134,13 +115,6 @@ public class ScheduleService {
         }
     }
 
-    /**
-     * 🔧 수정: 해당 직원이 접근 가능한 일정 목록 반환 (참여자 정보 포함)
-     * 설계 명세: getAccessibleSchedules
-     *
-     * 메소드 추적: getAccessibleSchedules() → scheduleRepository.findAccessibleSchedulesByEmployeeId()
-     *             → convertToScheduleResponseDTO() → getEmployeeName()
-     */
     @Transactional(readOnly = true)
     public List<ScheduleResponseDTO> getAccessibleSchedules(String employeeId) {
         try {
@@ -171,11 +145,7 @@ public class ScheduleService {
         }
     }
 
-    /**
-     * 🔧 새로 추가: Schedule 엔티티를 ScheduleResponseDTO로 변환 (참여자 정보 포함)
-     * 메소드 추적: convertToScheduleResponseDTO() → participantRepository.findParticipantListByScheduleId()
-     *             → getEmployeeName()
-     */
+
     private ScheduleResponseDTO convertToScheduleResponseDTO(Schedule schedule) {
         try {
             if (schedule == null) {
@@ -225,9 +195,6 @@ public class ScheduleService {
         }
     }
 
-    /**
-     * 🔧 새로 추가: 에러 발생 시 기본 일정 DTO 생성
-     */
     private ScheduleResponseDTO createBasicScheduleDTO(Schedule schedule) {
         if (schedule == null) {
             return null;
@@ -252,27 +219,19 @@ public class ScheduleService {
                 .build();
     }
 
-    /**
-     * 🔧 새로 추가: 직원 ID로 직원 이름 조회 (에러 처리 강화)
-     */
-    private String getEmployeeName(String employeeId) {
-        if (employeeId == null || employeeId.trim().isEmpty()) {
-            return "알 수 없는 사용자";
-        }
 
+    private String getEmployeeName(String employeeId) {
         try {
-            Optional<Employee> employee = employeeRepository.findById(employeeId);
-            return employee.map(Employee::getName).orElse("사용자(" + employeeId + ")");
+            return employeeRepository.findByEmployeeId(employeeId)
+                    .map(Employee::getName)
+                    .orElse("알 수 없음");
         } catch (Exception e) {
-            log.warn("직원 이름 조회 실패: employeeId={}", employeeId, e);
-            return "사용자(" + employeeId + ")";
+            log.warn("직원 이름 조회 실패: ID {}", employeeId, e);
+            return "알 수 없음";
         }
     }
 
-    /**
-     * 특정 일정 조회 (참여자 정보 포함)
-     * 메소드 추적: getScheduleWithParticipants() → scheduleRepository.findByScheduleId() → convertToScheduleResponseDTO()
-     */
+
     @Transactional(readOnly = true)
     public ScheduleResponseDTO getScheduleWithParticipants(String scheduleId) {
         try {
@@ -291,9 +250,7 @@ public class ScheduleService {
         }
     }
 
-    /**
-     * 기존 getSchedule 메소드 (하위 호환성 유지)
-     */
+
     @Transactional(readOnly = true)
     public Schedule getSchedule(String scheduleId) {
         if (scheduleId == null || scheduleId.trim().isEmpty()) {
@@ -304,9 +261,6 @@ public class ScheduleService {
                 .orElseThrow(() -> new IllegalArgumentException("일정을 찾을 수 없습니다: " + scheduleId));
     }
 
-    /**
-     * 특정 직원의 일정 목록 조회
-     */
     @Transactional(readOnly = true)
     public List<Schedule> getSchedulesByEmployee(String employeeId) {
         try {
@@ -322,9 +276,7 @@ public class ScheduleService {
         }
     }
 
-    /**
-     * 🔧 수정: 월별 일정 조회 (성능 최적화용) - 참여자 정보 포함
-     */
+
     @Transactional(readOnly = true)
     public List<ScheduleResponseDTO> getAccessibleSchedulesByMonth(String employeeId, int year, int month) {
         try {
@@ -361,9 +313,7 @@ public class ScheduleService {
         }
     }
 
-    /**
-     * 🔧 수정: 특정 날짜의 일정 조회 - 참여자 정보 포함
-     */
+
     @Transactional(readOnly = true)
     public List<ScheduleResponseDTO> getAccessibleSchedulesByDate(String employeeId, LocalDate targetDate) {
         try {
@@ -405,9 +355,6 @@ public class ScheduleService {
         }
     }
 
-    /**
-     * 참여자 목록 조회
-     */
     @Transactional(readOnly = true)
     public List<String> getParticipantList(String scheduleId) {
         try {
@@ -426,9 +373,7 @@ public class ScheduleService {
         }
     }
 
-    /**
-     * 일정 검색
-     */
+
     @Transactional(readOnly = true)
     public List<Schedule> searchSchedules(String keyword) {
         try {
@@ -445,9 +390,7 @@ public class ScheduleService {
         }
     }
 
-    /**
-     * 일정 삭제
-     */
+
     @Transactional
     public void deleteSchedule(String scheduleId) {
         try {
@@ -474,9 +417,7 @@ public class ScheduleService {
         }
     }
 
-    /**
-     * 일정 접근 권한 확인
-     */
+
     @Transactional(readOnly = true)
     public boolean hasAccessToSchedule(String employeeId, String scheduleId) {
         try {
@@ -496,9 +437,7 @@ public class ScheduleService {
         }
     }
 
-    /**
-     * 🔧 개선된 일정 통계 정보 조회
-     */
+
     @Transactional(readOnly = true)
     public ScheduleStatistics getScheduleStatistics(String employeeId) {
         try {
@@ -533,9 +472,6 @@ public class ScheduleService {
         }
     }
 
-    /**
-     * 일정 통계 내부 클래스
-     */
     public static class ScheduleStatistics {
         private final int totalCount;
         private final int todayCount;
@@ -552,48 +488,29 @@ public class ScheduleService {
         public int getUpcomingCount() { return upcomingCount; }
     }
 
-    /**
-     * 참여자 저장 (에러 처리 강화)
-     * 메소드 추적: saveParticipants() → participantRepository.saveAll()
-     */
-    private void saveParticipants(String scheduleId, List<String> participantIds) {
+
+    private void saveParticipants(Schedule schedule, List<String> participantIds) {
         try {
-            if (scheduleId == null || scheduleId.trim().isEmpty()) {
-                log.warn("일정 ID가 null 또는 빈 값입니다");
-                return;
-            }
+            List<Participant> participants = participantIds.stream()
+                    .filter(id -> id != null && !id.trim().isEmpty())
+                    .map(participantId -> Participant.builder()
+                            .participantId(UUID.randomUUID().toString())
+                            .scheduleId(schedule.getScheduleId())
+                            .employeeId(participantId)
+                            .build())
+                    .collect(Collectors.toList());
 
-            if (participantIds != null && !participantIds.isEmpty()) {
-                // 유효한 참여자 ID만 필터링
-                List<String> validParticipantIds = participantIds.stream()
-                        .filter(id -> id != null && !id.trim().isEmpty())
-                        .distinct() // 중복 제거
-                        .collect(Collectors.toList());
-
-                if (validParticipantIds.isEmpty()) {
-                    log.info("유효한 참여자가 없습니다: scheduleId={}", scheduleId);
-                    return;
-                }
-
-                List<Participant> participants = validParticipantIds.stream()
-                        .map(employeeId -> Participant.of(scheduleId, employeeId))
-                        .collect(Collectors.toList());
-
+            if (!participants.isEmpty()) {
                 participantRepository.saveAll(participants);
-                log.info("참여자 저장 완료: 일정 ID {}, 참여자 {} 명", scheduleId, participants.size());
-            } else {
-                log.info("참여자가 지정되지 않았습니다: scheduleId={}", scheduleId);
+                log.info("참여자 저장 완료: 일정 ID {}, 참여자 {} 명", schedule.getScheduleId(), participants.size());
             }
 
         } catch (Exception e) {
-            log.error("참여자 저장 중 오류 발생: scheduleId={}", scheduleId, e);
             throw new RuntimeException("참여자 저장 중 오류가 발생했습니다", e);
         }
     }
 
-    /**
-     * DTO를 Schedule 엔티티로 변환 (에러 처리 강화)
-     */
+
     private Schedule convertToSchedule(ScheduleRegisterRequestDTO scheduleDTO) {
         try {
             if (scheduleDTO == null) {
@@ -618,92 +535,219 @@ public class ScheduleService {
         }
     }
 
-    /**
-     * 일정 알림 스케줄링 (에러 처리 강화)
-     */
-    private void scheduleAlarmForSchedule(Schedule schedule, ScheduleRegisterRequestDTO scheduleDTO) {
+    private void scheduleAlarmForSchedule(Schedule schedule, ScheduleRegisterRequestDTO scheduleDTO, Employee creator) {
+        System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~~~");
+
+        if (schedule == null || scheduleDTO == null) {
+            System.out.println("*******************************************");
+            log.debug("일정 또는 DTO가 null이므로 알람 설정을 건너뜁니다");
+            return;
+        }
+
+        // 알람이 활성화되지 않았으면 스킵
+        if (!Boolean.TRUE.equals(scheduleDTO.getAlarmEnabled())) {
+            System.out.println("%%%%%%%%%%%%%%%%%%%");
+
+            log.debug("알람이 비활성화되어 있습니다: 일정 ID {}", schedule.getScheduleId());
+            return;
+        }
+
+        // 알람 시간이 설정되지 않았으면 기본값 사용 (일정 시작 30분 전)
+        LocalDateTime alarmTime = scheduleDTO.getAlarmTime();
+        if (alarmTime == null) {
+            System.out.println("$$$$$$$$$$$$$$$$$");
+
+            alarmTime = schedule.getStartDate().minusMinutes(30);
+            log.info("알람 시간이 설정되지 않아 기본값 사용: 일정 시작 30분 전 ({})", alarmTime);
+        }
+
+        // 과거 시간이면 알람 설정 안함
+        if (alarmTime.isBefore(LocalDateTime.now())) {
+            System.out.println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+
+            log.warn("알람 시간이 과거입니다. 알람을 설정하지 않습니다: {}", alarmTime);
+            return;
+        }
+
+        log.info("일정 알람 설정 시작: 일정 ID {}, 알람 시간 {}", schedule.getScheduleId(), alarmTime);
+
+        // 1. 작성자 알람 설정
+        if (creator != null && creator.getPhoneNum() != null && !creator.getPhoneNum().trim().isEmpty()) {
+            System.out.println("#############################");
+            scheduleCreatorAlarm(schedule, alarmTime, creator);
+        } else {
+            System.out.println("@@@@@@@@@@@@@@@@@@@@@@");
+
+            log.warn("작성자 정보가 없거나 전화번호가 없어 작성자 알람을 설정할 수 없습니다");
+        }
+
+        // 2. 참여자 알람 설정
+        if (scheduleDTO.getParticipants() != null && !scheduleDTO.getParticipants().isEmpty()) {
+            System.out.println("!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+            scheduleParticipantAlarms(schedule, alarmTime, scheduleDTO.getParticipants());
+        }
+
+        System.out.println("일정 알람 설정 완료: 일정 ID ================ "+ schedule.getAlarmEnabled());
+    }
+
+    private void scheduleCreatorAlarm(Schedule schedule, LocalDateTime alarmTime, Employee creator) {
         try {
-            if (schedule == null || scheduleDTO == null) {
-                log.warn("일정 또는 DTO가 null입니다");
-                return;
+            AlarmInfo creatorAlarm = AlarmInfo.forSchedule(
+                    creator.getPhoneNum(),
+                    schedule.getScheduleId(),
+                    "[내 일정] " + schedule.getTitle(),
+                    String.format("작성하신 일정이 곧 시작됩니다.\n위치: %s\n시간: %s",
+                            schedule.getDescription() != null ? schedule.getDescription() : "미정",
+                            schedule.getStartDate()),
+                    alarmTime
+            );
+
+            String alarmId = alarmService.scheduleAlarm(creatorAlarm);
+            log.info("작성자 알람 설정 완료: 알람 ID {}, 수신자 {}", alarmId, maskPhoneNumber(creator.getPhoneNum()));
+
+        } catch (Exception e) {
+            log.error("작성자 알람 설정 실패: 일정 ID {}, 작성자 ID {}", schedule.getScheduleId(), creator.getEmployeeId(), e);
+        }
+    }
+
+    private String getCreatorName(String employeeId) {
+        return getEmployeeName(employeeId);
+    }
+
+    private String maskPhoneNumber(String phoneNumber) {
+        if (phoneNumber == null || phoneNumber.length() < 8) {
+            return "****";
+        }
+
+        String cleanPhone = phoneNumber.replaceAll("[^0-9]", "");
+        if (cleanPhone.length() == 11) {
+            return cleanPhone.substring(0, 3) + "-****-" + cleanPhone.substring(7);
+        } else if (cleanPhone.length() == 10) {
+            return cleanPhone.substring(0, 3) + "-***-" + cleanPhone.substring(6);
+        } else {
+            return "****";
+        }
+    }
+
+    private void scheduleParticipantAlarms(Schedule schedule, LocalDateTime alarmTime, List<String> participantIds) {
+        log.info("참여자 알람 설정 시작: {} 명", participantIds.size());
+
+        int successCount = 0;
+        int failureCount = 0;
+
+        for (String participantId : participantIds) {
+            try {
+                Employee participant = employeeRepository.findByEmployeeId(participantId).orElse(null);
+
+                if (participant == null) {
+                    log.warn("참여자를 찾을 수 없습니다: ID {}", participantId);
+                    failureCount++;
+                    continue;
+                }
+
+                if (participant.getPhoneNum() == null || participant.getPhoneNum().trim().isEmpty()) {
+                    log.warn("참여자의 전화번호가 없습니다: ID {}, 이름 {}", participantId, participant.getName());
+                    failureCount++;
+                    continue;
+                }
+
+                AlarmInfo participantAlarm = AlarmInfo.forSchedule(
+                        participant.getPhoneNum(),
+                        schedule.getScheduleId() + "_PARTICIPANT_" + participantId,
+                        "[참여 일정] " + schedule.getTitle(),
+                        String.format("참여하실 일정이 곧 시작됩니다.\n주최자: %s\n위치: %s\n시간: %s",
+                                getCreatorName(schedule.getEmployeeId()),
+                                schedule.getDescription() != null ? schedule.getDescription() : "미정",
+                                schedule.getStartDate()),
+                        alarmTime
+                );
+
+                String alarmId = alarmService.scheduleAlarm(participantAlarm);
+                log.debug("참여자 알람 설정 완료: 알람 ID {}, 참여자 {}", alarmId, participant.getName());
+                successCount++;
+
+            } catch (Exception e) {
+                log.error("참여자 알람 설정 실패: 일정 ID {}, 참여자 ID {}", schedule.getScheduleId(), participantId, e);
+                failureCount++;
+            }
+        }
+
+        log.info("참여자 알람 설정 완료: 성공 {} 명, 실패 {} 명", successCount, failureCount);
+    }
+
+
+
+
+    public void deleteScheduleWithAlarms(String scheduleId) {
+        try {
+            // 1. 관련 알람 모두 취소
+            alarmService.cancelAlarmsByTarget(scheduleId, AlarmDomainType.SCHEDULE);
+            log.info("일정 관련 알람 취소 완료: 일정 ID {}", scheduleId);
+
+            // 2. 참여자 알람도 취소 (참여자별 알람이 있는 경우)
+            List<Participant> participants = participantRepository.findByScheduleId(scheduleId);
+            for (Participant participant : participants) {
+                String participantAlarmId = scheduleId + "_PARTICIPANT_" + participant.getEmployeeId();
+                try {
+                    alarmService.cancelAlarm(participantAlarmId);
+                } catch (Exception e) {
+                    log.debug("참여자 알람 취소 중 오류 (무시): {}", participantAlarmId, e);
+                }
             }
 
-            if (scheduleDTO.getAlarmTime() == null) {
-                log.warn("알림 시간이 설정되지 않았습니다: scheduleId={}", schedule.getScheduleId());
-                return;
-            }
+            // 3. 일정 삭제
+            scheduleRepository.deleteById(scheduleId);
+            log.info("일정 삭제 완료: ID {}", scheduleId);
 
-            log.info("일정 알림 스케줄링 시작: 일정 ID {}", schedule.getScheduleId());
+        } catch (Exception e) {
+            log.error("일정 삭제 실패: ID {}", scheduleId, e);
+            throw new RuntimeException("일정 삭제 중 오류가 발생했습니다", e);
+        }
+    }
 
-            // 작성자 알림 설정
-            Employee creator = employeeRepository.findByEmployeeId(schedule.getEmployeeId()).orElse(null);
-            if (creator != null && creator.getPhoneNum() != null) {
-                AlarmInfo creatorAlarm = AlarmInfo.builder()
-                        .recipientPhone(creator.getPhoneNum())
-                        .targetId(schedule.getScheduleId())
-                        .title(schedule.getTitle() + " 일정 알림")
-                        .description("예정된 일정: " + schedule.getDescription())
-                        .noticeTime(scheduleDTO.getAlarmTime())
-                        .domainType(AlarmDomainType.SCHEDULE)
-                        .build();
+    @Transactional
+    public void updateScheduleTimeWithAlarms(String scheduleId, LocalDateTime newStartTime, LocalDateTime newEndTime) {
+        try {
+            // 1. 기존 알람 취소
+            alarmService.cancelAlarmsByTarget(scheduleId, AlarmDomainType.SCHEDULE);
 
-                alarmService.scheduleAlarm(creatorAlarm);
-                log.info("작성자 알림 스케줄링 완료: {}", creator.getEmployeeId());
-            } else {
-                log.warn("작성자 정보 또는 전화번호를 찾을 수 없습니다: employeeId={}", schedule.getEmployeeId());
-            }
+            // 2. 일정 시간 업데이트
+            Schedule schedule = scheduleRepository.findById(scheduleId)
+                    .orElseThrow(() -> new IllegalArgumentException("일정을 찾을 수 없습니다: " + scheduleId));
 
-            // 참여자들에게도 알림 (선택사항)
-            if (scheduleDTO.getParticipantIds() != null && !scheduleDTO.getParticipantIds().isEmpty()) {
-                for (String participantId : scheduleDTO.getParticipantIds()) {
-                    try {
-                        Employee participant = employeeRepository.findByEmployeeId(participantId).orElse(null);
-                        if (participant != null && participant.getPhoneNum() != null) {
-                            AlarmInfo participantAlarm = AlarmInfo.builder()
-                                    .recipientPhone(participant.getPhoneNum())
-                                    .targetId(schedule.getScheduleId())
-                                    .title("[참여 일정] " + schedule.getTitle())
-                                    .description("참여 예정 일정: " + schedule.getDescription())
-                                    .noticeTime(scheduleDTO.getAlarmTime())
-                                    .domainType(AlarmDomainType.SCHEDULE)
-                                    .build();
+            schedule.setStartDate(newStartTime);
+            schedule.setEndDate(newEndTime);
+            schedule.setUpdatedAt(LocalDateTime.now());
 
-                            alarmService.scheduleAlarm(participantAlarm);
-                            log.debug("참여자 알림 스케줄링 완료: {}", participantId);
-                        }
-                    } catch (Exception e) {
-                        log.warn("참여자 알림 설정 실패: participantId={}", participantId, e);
-                        // 개별 참여자 알림 실패는 전체 프로세스를 중단하지 않음
-                    }
+            Schedule updatedSchedule = scheduleRepository.save(schedule);
+
+            // 3. 새로운 알람 설정
+            if (schedule.getAlarmEnabled()) {
+                Employee creator = employeeRepository.findByEmployeeId(schedule.getEmployeeId()).orElse(null);
+                if (creator != null) {
+                    LocalDateTime newAlarmTime = newStartTime.minusMinutes(30); // 30분 전 알람
+                    scheduleCreatorAlarm(schedule, newAlarmTime, creator);
+                    log.info("일정 시간 변경에 따른 알람 재설정 완료: 일정 ID {}", scheduleId);
                 }
             }
 
         } catch (Exception e) {
-            log.error("일정 알림 스케줄링 중 오류 발생", e);
-            throw new RuntimeException("알림 설정 중 오류가 발생했습니다", e);
+            log.error("일정 시간 수정 실패: ID {}", scheduleId, e);
+            throw new RuntimeException("일정 시간 수정 중 오류가 발생했습니다", e);
         }
     }
 
-    /**
-     * 로그 기록 (에러 처리 강화)
-     */
-    private void writeLog(String employeeId, Schedule schedule) {
+
+    @Transactional(readOnly = true)
+    public boolean hasActiveAlarms(String scheduleId) {
         try {
-            if (employeeId == null || schedule == null) {
-                log.warn("로그 기록을 위한 필수 정보가 null입니다");
-                return;
-            }
-
-            // 실제 로그 기록 로직 구현
-            log.info("일정 등록 로그 기록: 사용자 {}, 일정 ID {}, 제목 {}",
-                    employeeId, schedule.getScheduleId(), schedule.getTitle());
-
-            // TODO: 실제 LogWriter 구현체 호출
-            // logWriter.save(employeeId, ActionType.CREATE, schedule);
-
+            List<com.example.gagso.Alarm.models.Alarm> alarms =
+                    alarmService.getAlarmsByTarget(scheduleId, AlarmDomainType.SCHEDULE);
+            return !alarms.isEmpty();
         } catch (Exception e) {
-            log.error("로그 기록 중 오류 발생", e);
-            // 로그 기록 실패는 치명적이지 않으므로 예외를 던지지 않음
+            log.warn("알람 상태 조회 실패: 일정 ID {}", scheduleId, e);
+            return false;
         }
     }
 }

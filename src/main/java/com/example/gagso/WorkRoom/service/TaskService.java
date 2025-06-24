@@ -1,5 +1,7 @@
 package com.example.gagso.WorkRoom.service;
 
+import com.example.gagso.Employees.dto.EmployeeInfoDTO;
+import com.example.gagso.Employees.service.EmployeeInfoProvider;
 import com.example.gagso.WorkRoom.dto.TaskDTO;
 import com.example.gagso.WorkRoom.dto.TaskListItemDTO;
 import com.example.gagso.WorkRoom.helper.TaskValidator;
@@ -11,6 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import com.example.gagso.Log.model.ActionType;
 import com.example.gagso.Log.service.LogWriter;
+import com.example.gagso.Alarm.service.AlarmScheduler;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
@@ -23,9 +27,9 @@ public class TaskService {
 
     private final TaskValidator validator;
     private final TaskRepository taskRepository;
-
+    private final EmployeeInfoProvider employeeInfoProvider;
     private final LogWriter<Task> taskLogWriter;
-
+    private final AlarmScheduler alarmScheduler;
     @Transactional
     public String register(TaskDTO dto, MultipartFile file) {
         String validationMessage = validator.validate(dto);
@@ -53,7 +57,7 @@ public class TaskService {
 
         taskRepository.save(task);
 
-        taskLogWriter.save(dto.getManagerId(), ActionType.REGISTER, task);
+        taskLogWriter.save(dto.getCreatorId(), ActionType.REGISTER, task);
 
         return "";
     }
@@ -70,6 +74,12 @@ public class TaskService {
         return taskRepository.findByCondition(title).stream()
                 .map(this::toListItemDTO)
                 .collect(Collectors.toList());
+    }
+
+
+    @Transactional(readOnly = true)
+    public List<EmployeeInfoDTO> getEmployeesByDept(String deptId) {
+        return employeeInfoProvider.getEmployeeByDept(deptId);
     }
 
     private Task toEntity(TaskDTO dto) {

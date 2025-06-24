@@ -1,5 +1,6 @@
 package com.example.gagso.Log.service;
 
+import com.example.gagso.Clubs.models.Club;
 import com.example.gagso.Log.model.ActionType;
 import com.example.gagso.Log.model.LogEntry;
 import com.example.gagso.Log.repository.LogRepository;
@@ -13,25 +14,22 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-public class ClubLogWriter implements LogWriter</*Club*/Object> {
+public class ClubLogWriter implements LogWriter<Club> {
 
     private final LogRepository logRepository;
 
     @Override
-    public void save(String actor, ActionType action, /*Club*/ Object target) {
+    public void save(String actor, ActionType action, Club target) {
         LogEntry entry = new LogEntry();
         entry.setId(UUID.randomUUID());
         entry.setActorId(actor);
         entry.setActionType(action);
 
-        // ===== 실제 Club 엔티티 도입 후 주석 해제 =====
-        // entry.setTargetId(((Club) target).getClubId());
-        // entry.setTargetType(target.getClass().getSimpleName());
-
-        // ===== 현재는 임시 코드로 동작 =====
-        entry.setTargetId("TEMP_CLUB_ID");
+        // TaskLogWriter와 동일하게 targetId와 targetType을 설정합니다.
+        // Club 엔티티의 실제 ID 필드를 사용합니다.
+        entry.setTargetId(target.getClubId());
+        // 대상 엔티티의 타입을 문자열 "Club"으로 설정합니다.
         entry.setTargetType("Club");
-        // ===================================
 
         entry.setTimeStamp(LocalDateTime.now());
         logRepository.save(entry);

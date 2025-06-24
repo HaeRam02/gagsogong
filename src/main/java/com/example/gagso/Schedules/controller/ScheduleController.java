@@ -1,7 +1,7 @@
 package com.example.gagso.Schedules.controller;
 
-import com.example.gagso.Employee.dto.EmployeeInfoDTO;
-import com.example.gagso.Employee.service.EmployeeInfoProvider;
+import com.example.gagso.Employees.dto.EmployeeInfoDTO;
+import com.example.gagso.Employees.service.EmployeeInfoProvider;
 import com.example.gagso.Schedules.dto.ScheduleRegisterRequestDTO;
 import com.example.gagso.Schedules.dto.ScheduleRegistrationResult;
 import com.example.gagso.Schedules.dto.ScheduleResponseDTO;
@@ -19,24 +19,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 일정 등록, 조회를 담당하는 컨트롤 클래스
- * 설계 명세: DCD3005 - ScheduleController
- *
- * 🔧 메소드 추적 기반 개선 완료:
- * - SDD 명세에 따른 모든 기능 구현
- * - 기존 기능 100% 유지
- * - 일정 삭제/수정 기능 제외 (요구사항)
- * - ScheduleService의 모든 메소드 활용
- * - 에러 처리 및 보안 강화
- *
- * SDD 명세 구현 상태:
- * ✅ registerSchedule - 일정 정보를 전달받아 일정 등록을 요청
- * ✅ searchEmployeeInfoByKeyword - 직원 정보 검색을 서비스로 전달
- * ✅ displayAllSchedule - 파라미터로 받은 직원의 전체 일정 조회 화면을 출력
- * ✅ displaySchedule - 파라미터로 받은 개별 일정 조회 화면을 출력
- * 🔧 showRegisterView는 Web API 특성상 불필요 (프론트엔드에서 처리)
- */
+
 @RestController
 @RequestMapping("/api/schedules")
 @RequiredArgsConstructor
@@ -46,15 +29,7 @@ public class ScheduleController {
     private final ScheduleService scheduleService;
     private final EmployeeInfoProvider employeeInfoProvider; // 🔧 SDD 명세에 따른 직원 검색 기능
 
-    // =====================================================================================
-    // 핵심 기능들 (SDD 명세 + 기존 기능 유지)
-    // =====================================================================================
 
-    /**
-     * 일정 정보를 전달받아 일정 등록을 요청
-     * 설계 명세: registerSchedule
-     * 기존 기능 100% 유지
-     */
     @PostMapping
     public ResponseEntity<?> registerSchedule(
             @RequestBody ScheduleRegisterRequestDTO scheduleDTO,
@@ -85,11 +60,7 @@ public class ScheduleController {
         }
     }
 
-    /**
-     * 🔧 수정: 파라미터로 받은 직원의 전체 일정 조회 화면을 출력 (참여자 정보 포함)
-     * 설계 명세: displayAllSchedule
-     * 기존 기능 100% 유지 + 성능 개선
-     */
+
     @GetMapping
     public ResponseEntity<List<ScheduleResponseDTO>> displayAllSchedules(
             @RequestHeader(value = "X-Employee-Id", required = false) String employeeId) {
@@ -112,11 +83,7 @@ public class ScheduleController {
         }
     }
 
-    /**
-     * 🔧 수정: 특정 일정 상세 조회 (참여자 정보 포함)
-     * 설계 명세: displaySchedule
-     * 기존 기능 100% 유지 + 권한 체크 강화
-     */
+
     @GetMapping("/{scheduleId}")
     public ResponseEntity<ScheduleResponseDTO> displaySchedule(
             @PathVariable String scheduleId,
@@ -149,14 +116,7 @@ public class ScheduleController {
         }
     }
 
-    // =====================================================================================
-    // 🔧 SDD 명세에 따른 추가 기능
-    // =====================================================================================
 
-    /**
-     * 🔧 SDD 명세 구현: 직원 정보 검색을 서비스로 전달
-     * 설계 명세: searchEmployeeInfoByKeyword
-     */
     @GetMapping("/employees/search")
     public ResponseEntity<List<EmployeeInfoDTO>> searchEmployeeInfoByKeyword(
             @RequestParam(required = false) String keyword) {
@@ -172,7 +132,7 @@ public class ScheduleController {
                 log.info("전체 직원 정보 조회 완료: {} 명", employees.size());
             } else {
                 // 키워드로 직원 검색
-                employees = employeeInfoProvider.searchEmployees(keyword.trim());
+                employees = employeeInfoProvider.getEmployeeByName(keyword.trim());
                 log.info("직원 검색 완료: 키워드 '{}', 결과 {} 명", keyword, employees.size());
             }
 
@@ -184,9 +144,7 @@ public class ScheduleController {
         }
     }
 
-    /**
-     * 🔧 SDD 명세 지원: 부서별 직원 정보 조회 (참여자 선택 지원)
-     */
+
     @GetMapping("/employees/department/{deptId}")
     public ResponseEntity<List<EmployeeInfoDTO>> getEmployeesByDepartment(@PathVariable String deptId) {
 
@@ -203,13 +161,7 @@ public class ScheduleController {
         }
     }
 
-    // =====================================================================================
-    // 기존 확장 기능들 (100% 유지)
-    // =====================================================================================
 
-    /**
-     * 🔧 기존 기능 유지: 월별 일정 조회 (달력 화면용)
-     */
     @GetMapping("/monthly")
     public ResponseEntity<List<ScheduleResponseDTO>> getMonthlySchedules(
             @RequestParam int year,
@@ -233,9 +185,7 @@ public class ScheduleController {
         }
     }
 
-    /**
-     * 🔧 기존 기능 유지: 특정 날짜의 일정 조회
-     */
+
     @GetMapping("/daily")
     public ResponseEntity<List<ScheduleResponseDTO>> getDailySchedules(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
@@ -258,9 +208,7 @@ public class ScheduleController {
         }
     }
 
-    /**
-     * 🔧 기존 기능 유지: 오늘의 일정 조회 (빠른 조회용)
-     */
+
     @GetMapping("/today")
     public ResponseEntity<List<ScheduleResponseDTO>> getTodaySchedules(
             @RequestHeader(value = "X-Employee-Id", required = false) String employeeId) {
@@ -283,9 +231,7 @@ public class ScheduleController {
         }
     }
 
-    /**
-     * 🔧 기존 기능 유지: 다가오는 일정 조회 (7일 이내) - 성능 개선
-     */
+
     @GetMapping("/upcoming")
     public ResponseEntity<List<ScheduleResponseDTO>> getUpcomingSchedules(
             @RequestParam(defaultValue = "7") int days,
@@ -323,9 +269,7 @@ public class ScheduleController {
         }
     }
 
-    /**
-     * 🔧 기존 기능 유지: 일정 제목으로 검색
-     */
+
     @GetMapping("/search")
     public ResponseEntity<List<Schedule>> searchSchedules(
             @RequestParam String keyword,
@@ -355,13 +299,7 @@ public class ScheduleController {
         }
     }
 
-    // =====================================================================================
-    // 🔧 ScheduleService 메소드 활용한 새로운 기능들
-    // =====================================================================================
 
-    /**
-     * 🔧 새로 추가: 일정 통계 정보 조회 (ScheduleService.getScheduleStatistics 활용)
-     */
     @GetMapping("/statistics")
     public ResponseEntity<ScheduleService.ScheduleStatistics> getScheduleStatistics(
             @RequestHeader(value = "X-Employee-Id", required = false) String employeeId) {
@@ -384,9 +322,6 @@ public class ScheduleController {
         }
     }
 
-    /**
-     * 🔧 새로 추가: 특정 일정 접근 권한 확인
-     */
     @GetMapping("/{scheduleId}/access")
     public ResponseEntity<Map<String, Serializable>> checkScheduleAccess(
             @PathVariable String scheduleId,
@@ -414,9 +349,7 @@ public class ScheduleController {
         }
     }
 
-    /**
-     * 🔧 새로 추가: 특정 일정의 참여자 목록 조회
-     */
+
     @GetMapping("/{scheduleId}/participants")
     public ResponseEntity<List<String>> getParticipantList(
             @PathVariable String scheduleId,
@@ -445,9 +378,7 @@ public class ScheduleController {
         }
     }
 
-    /**
-     * 🔧 새로 추가: 특정 직원의 일정 목록 조회 (관리자용)
-     */
+
     @GetMapping("/employee/{targetEmployeeId}")
     public ResponseEntity<List<Schedule>> getSchedulesByEmployee(
             @PathVariable String targetEmployeeId,
@@ -476,13 +407,7 @@ public class ScheduleController {
         }
     }
 
-    // =====================================================================================
-    // 🔧 추가 편의 기능들 (프론트엔드 지원)
-    // =====================================================================================
 
-    /**
-     * 🔧 새로 추가: 현재 진행 중인 일정 조회
-     */
     @GetMapping("/ongoing")
     public ResponseEntity<List<ScheduleResponseDTO>> getOngoingSchedules(
             @RequestHeader(value = "X-Employee-Id", required = false) String employeeId) {
@@ -509,9 +434,7 @@ public class ScheduleController {
         }
     }
 
-    /**
-     * 🔧 새로 추가: 이번 주 일정 조회
-     */
+
     @GetMapping("/this-week")
     public ResponseEntity<List<ScheduleResponseDTO>> getThisWeekSchedules(
             @RequestHeader(value = "X-Employee-Id", required = false) String employeeId) {
@@ -539,9 +462,6 @@ public class ScheduleController {
         }
     }
 
-    /**
-     * 🔧 새로 추가: 건강 체크 (시스템 상태 확인)
-     */
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> healthCheck() {
         try {
@@ -562,13 +482,7 @@ public class ScheduleController {
         }
     }
 
-    // =====================================================================================
-    // 🔧 에러 처리 강화 (전역 예외 처리 지원)
-    // =====================================================================================
 
-    /**
-     * 🔧 새로 추가: API 정보 조회 (개발자용)
-     */
     @GetMapping("/info")
     public ResponseEntity<Map<String, Object>> getApiInfo() {
         return ResponseEntity.ok(Map.of(
