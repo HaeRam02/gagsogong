@@ -17,6 +17,7 @@ export default function TaskRoom() {
       <button onClick={goToCreate} className="addBtn">
         문서 등록
       </button>
+
       <RegisterDocumentView />
     </div>
   );

@@ -8,5 +8,6 @@ import java.util.List;
 
 public interface AttachmentRepository extends JpaRepository<Attachment, Long> {
     List<Attachment> findByDocumentDocID(String docID);
+    List<Attachment> findByAttachmentID(String docID);
 
 }

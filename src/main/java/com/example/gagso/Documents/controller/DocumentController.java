@@ -5,7 +5,9 @@ import com.example.gagso.Documents.service.DocumentService;
 import com.example.gagso.WorkRoom.dto.TaskDTO;
 import com.example.gagso.WorkRoom.dto.TaskListItemDTO;
 import com.example.gagso.WorkRoom.service.TaskService;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -49,6 +51,23 @@ public class DocumentController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(dto);
+    }
+    @GetMapping("/{docId}/attachments/{attId}")
+    public ResponseEntity<Resource> downloadAttachment(
+            @PathVariable String docId,
+            @PathVariable String attId) {
+
+        // Service 레이어에서 Resource 형태로 파일을 로드
+        Resource file = service.loadAttachmentAsResource(docId, attId);
+
+        // 원본 파일명 추출 (서비스에서 함께 반환하거나, DB에서 조회)
+        String originalFilename = service.getAttachmentFilename(attId);
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + originalFilename + "\"")
+                .body(file);
     }
 //    @GetMapping("/open")
 //    public ResponseEntity<?> openCreateScreen(@RequestParam String deptId) {

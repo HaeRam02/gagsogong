@@ -10,6 +10,7 @@ import com.example.gagso.Documents.repository.DocumentRepository;
 import com.example.gagso.WorkRoom.dto.TaskDTO;
 import com.example.gagso.WorkRoom.dto.TaskListItemDTO;
 import com.example.gagso.WorkRoom.models.Task;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -172,5 +173,18 @@ public class DocumentService {
 //        return documentRepository.findById(id)
 //                .map(this::toListItemDTO)
 //                .orElse(null);
+    }
+    public Resource loadAttachmentAsResource(String docId, String attId) {
+        // (1) DB에서 attId로 파일 메타정보 조회
+        Attachment meta = attachmentRepository.findById(attId)
+                .orElseThrow(() -> new NotFoundException("첨부파일을 찾을 수 없습니다."));
+        // (2) 실제 물리 경로에서 Resource로 로드
+        return storageService.loadAsResource(meta.getStoreFilename());
+    }
+
+    public String getAttachmentFilename(String attId) {
+        return attachmentRepo.findById(attId)
+                .map(AttachmentMeta::getOriginalFilename)
+                .orElse("unknown.bin");
     }
 }

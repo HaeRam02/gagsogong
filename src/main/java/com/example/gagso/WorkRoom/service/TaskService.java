@@ -19,7 +19,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class TaskService {
-
     private final TaskValidator validator;
     private final TaskRepository taskRepository;
 
